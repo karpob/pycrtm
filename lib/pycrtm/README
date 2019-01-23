@@ -1,4 +1,0 @@
-Steps to making this Work.
-1. source sourceMe.csh
-2. If you change the interface to pycrtm: f2py -m pycrtm -h sgnFile.pyf pycrtm.f90 --overwrite-signature
-3. python: import pycrtm
