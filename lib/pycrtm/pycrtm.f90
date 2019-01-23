@@ -1,6 +1,6 @@
 module pycrtm 
 contains
-subroutine wrapForward( coefficientPath, sensor_id, & 
+subroutine wrap_forward( coefficientPath, sensor_id, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan, &
                         N_LAYERS, pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
                         surfaceType, surfaceTemperature, windSpeed10m, windDirection10m, & 
@@ -31,7 +31,7 @@ subroutine wrapForward( coefficientPath, sensor_id, &
   ! --------------------------
   ! Some non-CRTM-y Parameters
   ! --------------------------
-  CHARACTER(*), PARAMETER :: SUBROUTINE_NAME   = 'wrapForward'
+  CHARACTER(*), PARAMETER :: SUBROUTINE_NAME   = 'wrap_forward'
   CHARACTER(*), PARAMETER :: PROGRAM_VERSION_ID = '0.01'
 
 
@@ -238,10 +238,10 @@ subroutine wrapForward( coefficientPath, sensor_id, &
     STOP
   END IF
   ! ==========================================================================
-end subroutine wrapForward
+end subroutine wrap_forward
 
 
-subroutine wrapKmatrix( coefficientPath, sensor_id, & 
+subroutine wrap_k_matrix( coefficientPath, sensor_id, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan, &
                         N_LAYERS, pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
                         surfaceType, surfaceTemperature, windSpeed10m, windDirection10m, & 
@@ -262,7 +262,7 @@ subroutine wrapKmatrix( coefficientPath, sensor_id, &
   ! --------------------------
   ! Some non-CRTM-y Parameters
   ! --------------------------
-  CHARACTER(*), PARAMETER :: SUBROUTINE_NAME   = 'wrapKmatrix'
+  CHARACTER(*), PARAMETER :: SUBROUTINE_NAME   = 'wrap_k_matrix'
   CHARACTER(*), PARAMETER :: PROGRAM_VERSION_ID = '0.01'
 
   ! variables for interface
@@ -510,8 +510,8 @@ subroutine wrapKmatrix( coefficientPath, sensor_id, &
     STOP
   END IF
   ! ==========================================================================
-end subroutine wrapKmatrix
-  SUBROUTINE dataUsStandardAtmosphere(Level_Pressure, Pressure, Temperature, water_vapor, ozone )
+end subroutine wrap_k_matrix
+  SUBROUTINE test_data_us_std(Level_Pressure, Pressure, Temperature, water_vapor, ozone )
     real, intent(out), dimension(93) :: Level_Pressure 
     real, intent(out), dimension(92) :: Pressure, Temperature, water_vapor, ozone
     ! ...Profile data
@@ -584,9 +584,9 @@ end subroutine wrapKmatrix
       6.368E-02,6.070E-02,5.778E-02,5.481E-02,5.181E-02,4.920E-02,4.700E-02,4.478E-02, &
       4.207E-02,3.771E-02,3.012E-02,1.941E-02,9.076E-03,2.980E-03,5.117E-03,1.160E-02, &
       1.428E-02,1.428E-02,1.428E-02,1.428E-02/)
-  end subroutine dataUsStandardAtmosphere
+  end subroutine test_data_us_std
 
-  SUBROUTINE dataTropical(Level_Pressure, Pressure, Temperature, water_vapor, ozone)
+  SUBROUTINE test_data_tropical(Level_Pressure, Pressure, Temperature, water_vapor, ozone)
     real, intent(out), dimension(93) :: Level_Pressure 
     real, intent(out), dimension(92) :: Pressure, Temperature, water_vapor, ozone
     ! ...Profile data
@@ -660,5 +660,5 @@ end subroutine wrapKmatrix
       6.559E-02,6.638E-02,6.722E-02,6.841E-02,6.944E-02,6.720E-02,6.046E-02,4.124E-02, &
       2.624E-02,2.623E-02,2.622E-02,2.622E-02/)
 
-  end subroutine dataTropical
+  end subroutine test_data_tropical
 end module pycrtm
