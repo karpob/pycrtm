@@ -1,5 +1,5 @@
---- libsrc/CRTM_CloudCover_Define.f90   2017-11-27 18:56:51.000000000 +0000
-+++ /users/karpowicz/CRTM_CloudCover_Define.f90 2018-02-12 22:47:27.990079408 +0000
+--- libsrc/CRTM_CloudCover_Define.f90   
++++ CRTM_CloudCover_Define.f90 
 @@ -1353,12 +1353,12 @@
  !--------------------------------------------------------------------------------
  

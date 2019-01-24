@@ -1,5 +1,5 @@
 import os,shutil,glob,sys,argparse
-#import urllib.request
+import urllib.request
 import tarfile
 from subprocess import Popen, PIPE
 
@@ -35,14 +35,14 @@ def main( a ):
         print("Configuring/Compiling/Installing CRTM.")
         # configure, comile and install CRTM to the installPath
         configureCompileInstallCrtm( installPath, fo, fe, scriptDir )
-
+        
         print("Moving to {}".format( os.path.join(installPath,'crtm') ))
         # get rid of the version to make things easier later on for pycrtm
-        shutil.move(glob.glob(os.path.join(installPath,'crtm_v*'))[0], os.path.join(installPath,'crtm'))
+        os.rename(glob.glob(os.path.join(installPath,'crtm_v*'))[0], os.path.join(installPath,'crtm'))
 
         print("Copying coefficients to {}".format( os.path.join(installPath,'crtm','crtm_coef') ) )   
         # make the coef directory along with the install location
-        os.mkdir( os.path.join(installPath,'crtm','crtm_coef') )
+        os.makedirs( os.path.join(installPath,'crtm','crtm_coef') )
 
         # copy coefficients 
         moveCrtmCoefficients( installPath )
@@ -93,12 +93,12 @@ def selectCompilerFlags(arch):
         gccBinPath = os.path.split(fullGfortranPath)[0]
         gccPath = os.path.split(gccBinPath)[0]
         gccLibPath = os.path.join(gccPath,'lib64')
-        gccGompPath = os.path.join(gccPath,'lib','gcc')
-        gccGompPath = glob.glob(os.path.join(gccGompPath,'*'))[0]
-        gccGompPath = os.path.join(gccGompPath,'gcc')
-        gccGompPath = glob.glob(os.path.join(gccGompPath,'*'))[0]
-        gccGompPath = glob.glob(os.path.join(gccGompPath,'*'))[0]
-        gccGompPath = os.path.join(gccGompPath,'finclude')
+        #gccGompPath = os.path.join(gccPath,'lib','gcc')
+        #gccGompPath = glob.glob(os.path.join(gccGompPath,'*'))[0]
+        #gccGompPath = os.path.join(gccGompPath,'gcc')
+        #gccGompPath = glob.glob(os.path.join(gccGompPath,'*'))[0]
+        #gccGompPath = glob.glob(os.path.join(gccGompPath,'*'))[0]
+        #gccGompPath = os.path.join(gccGompPath,'finclude')
         # bit to check what gcc version is available, if not > 6. Problem. exit.
         p = Popen(['gfortran','-dumpversion'], stdout = PIPE, stderr = PIPE) 
         p.wait()
@@ -106,11 +106,11 @@ def selectCompilerFlags(arch):
         if ( int(so.decode("utf-8").split('.')[0]) < 6 ):
             sys.exit("F2008 required. gcc >= 6")
          
-        if( not os.path.exists(os.path.join(gccGompPath, 'omp_lib.mod'))):
-            sys.exit("Can't find gomp in {}. Correct GCC module loaded?".format(gccGompPath) )
+        #if( not os.path.exists(os.path.join(gccGompPath, 'omp_lib.mod'))):
+        #    sys.exit("Can't find gomp in {}. Correct GCC module loaded?".format(gccGompPath) )
         
         compilerFlags['gfortran-openmp']['FCFLAGS1']="-fimplicit-none -ffree-form -fPIC -fopenmp -fno-second-underscore -frecord-marker=4 -std=f2008"
-        compilerFlags['gfortran-openmp']['FCFLAGS2']=" -lgomp -I"+gccGompPath+" -L"+gccLibPath
+        compilerFlags['gfortran-openmp']['FCFLAGS2']=""# -lgomp -I"+gccGompPath+" -L"+gccLibPath
         compilerFlags['gfortran-openmp']['LDFLAGS']="-Wall -g -shared -lgomp"
         compilerFlags['gfortran-openmp']['F2PY_COMPILER']="gnu95"
    
@@ -135,7 +135,7 @@ def downloadExtractTar( tarballPath, scriptDir ):
     os.chdir(tarballPath)
     if(len(glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz')))==0):
         print("Downloading CRTM Tarball {}. This will likely take a while, because this server is *insanely* slow.".format ('http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz'))
-        #urllib.request.urlretrieve("http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz", "crtm_v2.3.0.tar.gz") 
+        urllib.request.urlretrieve("http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz", "crtm_v2.3.0.tar.gz") 
     print("Untarring CRTM Tarball {}".format (glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz'))[0]))
     t = tarfile.open( glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz'))[0]  )
     t.extractall( path = scriptDir )
