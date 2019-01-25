@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os,shutil,glob,sys,argparse
 import urllib.request
 import tarfile
@@ -20,6 +21,7 @@ def main( a ):
     installPath = a.install
     tarballPath = a.rtpath
     scriptDir = os.path.split(os.path.abspath(__file__))[0]
+    # if we want to install CRTM from source tarball
     if(a.rtinstall):
         # copy tarball from download location
         downloadExtractTar(tarballPath, scriptDir)    
@@ -54,10 +56,9 @@ def main( a ):
         print("Modifying crtm.cfg")
         modifyOptionsCfg( 'crtm.cfg', scriptDir, installPath )
 
-    print("Making python modules.")
+    print("Making python module.")
     # build python module
     # Set compile environment variables.
-    #os.environ['LDFLAGS']= compilerFlags[arch]['LDFLAGS']
     os.environ['FCFLAGS'] = os.environ['FCFLAGS'] + compilerFlags[arch]['FCFLAGS2']
     os.environ['FFLAGS'] = os.environ['FCFLAGS']
     os.environ['FC'] = compilerFlags[arch]['Compiler']
@@ -90,22 +91,13 @@ def selectCompilerFlags(arch):
 
         gccBinPath = os.path.split(fullGfortranPath)[0]
         gccPath = os.path.split(gccBinPath)[0]
-        gccLibPath = os.path.join(gccPath,'lib64')
-        #gccGompPath = os.path.join(gccPath,'lib','gcc')
-        #gccGompPath = glob.glob(os.path.join(gccGompPath,'*'))[0]
-        #gccGompPath = os.path.join(gccGompPath,'gcc')
-        #gccGompPath = glob.glob(os.path.join(gccGompPath,'*'))[0]
-        #gccGompPath = glob.glob(os.path.join(gccGompPath,'*'))[0]
-        #gccGompPath = os.path.join(gccGompPath,'finclude')
+
         # bit to check what gcc version is available, if not > 6. Problem. exit.
         p = Popen(['gfortran','-dumpversion'], stdout = PIPE, stderr = PIPE) 
         p.wait()
         so,se = p.communicate() 
         if ( int(so.decode("utf-8").split('.')[0]) < 6 ):
             sys.exit("F2008 required. gcc >= 6")
-         
-        #if( not os.path.exists(os.path.join(gccGompPath, 'omp_lib.mod'))):
-        #    sys.exit("Can't find gomp in {}. Correct GCC module loaded?".format(gccGompPath) )
         
         compilerFlags['gfortran-openmp']['FCFLAGS1']="-fimplicit-none -ffree-form -fPIC -fopenmp -fno-second-underscore -frecord-marker=4 -std=f2008"
         compilerFlags['gfortran-openmp']['FCFLAGS2']=""# -lgomp -I"+gccGompPath+" -L"+gccLibPath
@@ -132,7 +124,9 @@ def downloadExtractTar( tarballPath, scriptDir ):
         os.makedirs(tarballPath)
     os.chdir(tarballPath)
     if(len(glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz')))==0):
-        print("Downloading CRTM Tarball {}. This will likely take a while, because this server is *insanely* slow.".format ('http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz'))
+        print("Downloading CRTM Tarball {}.\
+               This will likely take a while, because \
+               this server is *insanely* slow.".format ('http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz'))
         urllib.request.urlretrieve("http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz", "crtm_v2.3.0.tar.gz") 
     print("Untarring CRTM Tarball {}".format (glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz'))[0]))
     t = tarfile.open( glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz'))[0]  )
@@ -247,15 +241,6 @@ def makeModule(fo, fe, scriptDir):
     p=Popen(['make'],stderr=fe,stdout=fo)
     p.wait()
     runAndCheckProcess(p,'pycrtm make', fo, fe, scriptDir)
-    #os.system('./sourceMe.bash')
-def makeLegacyInterpModule(fo, fe, scriptDir):
-    p=Popen(['make', 'clean'],stderr=fe,stdout=fo)
-    p.wait()
-    runAndCheckProcess(p,'legacy_interp make clean', fo, fe, scriptDir)
-
-    p=Popen(['make'],stderr=fe,stdout=fo)
-    p.wait()
-    runAndCheckProcess(p,'legacy_interp make', fo, fe, scriptDir)
 
 def modifyOptionsCfg( filename, scriptDir, installLocation ):
     with open( filename ,'w') as newFile:
@@ -285,4 +270,3 @@ if __name__ == "__main__":
     parser.add_argument('--inplace', help="Switch installer to use rtpath for previously installed crtm.", dest='rtinstall', action='store_false' )
     a = parser.parse_args()
     main(a)
-
