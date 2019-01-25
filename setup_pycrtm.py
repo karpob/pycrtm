@@ -14,6 +14,9 @@ def main( a ):
  
     arch = a.arch
     compilerFlags = selectCompilerFlags(arch)
+    # set the required environment variables
+    os.environ["FC"] = compilerFlags[arch]['Compiler']  
+    os.environ['FCFLAGS']= compilerFlags[arch]['FCFLAGS1']
     installPath = a.install
     tarballPath = a.rtpath
     scriptDir = os.path.split(os.path.abspath(__file__))[0]
@@ -27,10 +30,6 @@ def main( a ):
         print("Patching CRTM for gfortran") 
         if(arch=='gfortran-openmp'): patchCrtm(fo, fe, scriptDir)
 
-        # set the required environment variables
-        os.environ["FC"] = compilerFlags[arch]['Compiler']  
-        os.environ['LDFLAGS'] ="" 
-        os.environ['FCFLAGS']= compilerFlags[arch]['FCFLAGS1']
 
         print("Configuring/Compiling/Installing CRTM.")
         # configure, comile and install CRTM to the installPath
@@ -58,9 +57,8 @@ def main( a ):
     print("Making python modules.")
     # build python module
     # Set compile environment variables.
-    os.environ['LDFLAGS']= compilerFlags[arch]['LDFLAGS']
+    #os.environ['LDFLAGS']= compilerFlags[arch]['LDFLAGS']
     os.environ['FCFLAGS'] = os.environ['FCFLAGS'] + compilerFlags[arch]['FCFLAGS2']
-    print('fcflags', os.environ['FCFLAGS'] + compilerFlags[arch]['FCFLAGS2'])  
     os.environ['FFLAGS'] = os.environ['FCFLAGS']
     os.environ['FC'] = compilerFlags[arch]['Compiler']
     os.environ['ILOC'] = os.path.join(installPath,'crtm')
