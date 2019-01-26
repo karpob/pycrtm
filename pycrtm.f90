@@ -1,6 +1,6 @@
 module pycrtm 
 contains
-subroutine wrap_forward( coefficientPath, sensor_id, & 
+subroutine wrap_forward( coefficientPath, sensor_id_in, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan, &
                         N_LAYERS, pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
                         surfaceType, surfaceTemperature, windSpeed10m, windDirection10m, & 
@@ -15,17 +15,19 @@ subroutine wrap_forward( coefficientPath, sensor_id, &
   IMPLICIT NONE
   ! ============================================================================
   ! variables for interface
-  character(1024), intent(in) :: coefficientPath
-  character(len=256), intent(in) :: sensor_id(1)
+  character(len=*), intent(in) :: coefficientPath
+  character(len=*), intent(in) :: sensor_id_in
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
   real, intent(in) :: zenithAngle, scanAngle, azimuthAngle, solarAngle
-  integer, intent(in) :: nChan, N_Layers 
-  real, intent(in), dimension(N_LAYERS) :: pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers
+  integer, intent(in) :: nChan, N_Layers
+  real, intent(in) :: pressureLevels(N_LAYERS+1)
+  real, intent(in) :: pressureLayers(N_LAYERS), temperatureLayers(N_LAYERS), humidityLayers(N_LAYERS), ozoneConcLayers(N_LAYERS)
   integer, intent(in) :: surfaceType
   real, intent(in) :: surfaceTemperature, windSpeed10m, windDirection10m
-  real, dimension(nChan) :: outTb
+  real, intent(out) :: outTb(nChan)
   
+  character(len=256), dimension(1) :: sensor_id
 
 
   ! --------------------------
@@ -80,6 +82,7 @@ subroutine wrap_forward( coefficientPath, sensor_id, &
   TYPE(CRTM_RTSolution_type), ALLOCATABLE :: rts(:,:)
   
 
+  sensor_id(1) = sensor_id_in
   ! Program header
   ! --------------
   CALL CRTM_Version( Version )
@@ -179,8 +182,12 @@ subroutine wrap_forward( coefficientPath, sensor_id, &
                                  Sensor_Scan_Angle   = dble(scanAngle) )
     ! ==========================================================================
 
-
-    
+    ! surface stuff! need to put something more advanced here!
+    Sfc%Water_Coverage = 1
+    Sfc%Water_Temperature = surfaceTemperature
+    Sfc%Wind_Direction = windDirection10m
+    Sfc%Wind_Speed = windSpeed10m
+    Sfc%Salinity = 33.0    
     ! ==========================================================================
     ! STEP 8. **** CALL THE CRTM FUNCTIONS FOR THE CURRENT SENSOR ****
     !
@@ -266,7 +273,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id, &
   CHARACTER(*), PARAMETER :: PROGRAM_VERSION_ID = '0.01'
 
   ! variables for interface
-  character(1024), intent(in) :: coefficientPath
+  character(len=1024), intent(in) :: coefficientPath
   character(len=256), intent(in) :: sensor_id(1)
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)

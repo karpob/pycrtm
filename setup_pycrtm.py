@@ -65,7 +65,6 @@ def main( a ):
     os.environ['ILOC'] = os.path.join(installPath,'crtm')
     os.environ['F2PY_COMPILER'] = compilerFlags[arch]['F2PY_COMPILER']
     os.environ['FORT'] = compilerFlags[arch]['Compiler']
-    print("Making pycrtm module.")
     makeModule(fo, fe, scriptDir)
     os.chdir(scriptDir)
     
@@ -243,16 +242,14 @@ def makeModule(fo, fe, scriptDir):
     runAndCheckProcess(p,'pycrtm make', fo, fe, scriptDir)
 
 def modifyOptionsCfg( filename, scriptDir, installLocation ):
-    with open( filename ,'w') as newFile:
+    with open( filename+'new' ,'w') as newFile:
         with open(os.path.join(scriptDir, filename), 'r') as oldFile:
             for l in oldFile:
                 if('coeffs_dir' in l):
                     newFile.write(l.replace(l,'coeffs_dir = '+os.path.join(installLocation,'crtm','crtm_coef')+os.linesep))
                 else:
                     newFile.write(l)
-    # move it up a directory.
-    shutil.move(filename, os.path.join(os.path.split(scriptDir)[0], filename) )
-
+    os.rename(filename+'new', filename)
 def which(name):
     found = 0 
     for path in os.getenv("PATH").split(os.path.pathsep):
