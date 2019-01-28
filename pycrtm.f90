@@ -198,7 +198,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     err_stat = CRTM_Forward( atm        , &  ! Input
                              sfc        , &  ! Input
                              geo        , &  ! Input
-                             chinfo(n:n), &  ! Input
+                             chinfo, &  ! Input
                              rts          )  ! Output
     IF ( err_stat /= SUCCESS ) THEN
       message = 'Error calling CRTM Forward Model for '//TRIM(sensor_id(n))
@@ -248,7 +248,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
 end subroutine wrap_forward
 
 
-subroutine wrap_k_matrix( coefficientPath, sensor_id, & 
+subroutine wrap_k_matrix( coefficientPath, sensor_id_in, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan, &
                         N_LAYERS, pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
                         surfaceType, surfaceTemperature, windSpeed10m, windDirection10m, & 
@@ -274,18 +274,20 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id, &
 
   ! variables for interface
   character(len=1024), intent(in) :: coefficientPath
-  character(len=256), intent(in) :: sensor_id(1)
+  character(len=*), intent(in) :: sensor_id_in
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
   real, intent(in) :: zenithAngle, scanAngle, azimuthAngle, solarAngle
   integer, intent(in) :: nChan, N_Layers 
-  real, intent(in), dimension(N_LAYERS) :: pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers
+  real, intent(in) :: pressureLevels(N_LAYERS+1)
+  real, intent(in) :: pressureLayers(N_LAYERS), temperatureLayers(N_LAYERS), humidityLayers(N_LAYERS), ozoneConcLayers(N_LAYERS)
   integer, intent(in) :: surfaceType
   real, intent(in) :: surfaceTemperature, windSpeed10m, windDirection10m
   real, intent(out), dimension(nChan) :: outTb
   real, intent(out), dimension(nChan,N_LAYERS) :: outTransmission, temperatureJacobian, humidityJacobian, ozoneJacobian
 
 
+  character(len=256) :: sensor_id(1)
   ! ============================================================================
   ! STEP 2. **** SET UP SOME PARAMETERS FOR THE CRTM RUN ****
   !
@@ -323,8 +325,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id, &
 
   ! 3b. Define the FORWARD variables
   ! --------------------------------
-  TYPE(CRTM_Atmosphere_type)              :: atm(N_PROFILES)
-  TYPE(CRTM_Surface_type)                 :: sfc(N_PROFILES)
+  TYPE(CRTM_Atmosphere_type), ALLOCATABLE :: atm(:)
+  TYPE(CRTM_Surface_type),    ALLOCATABLE :: sfc(:)
   TYPE(CRTM_RTSolution_type), ALLOCATABLE :: rts(:,:)
  
   ! 3c. Define the K-MATRIX variables
@@ -335,6 +337,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id, &
   ! ============================================================================
 
 
+  sensor_id(1) = sensor_id_in
   ! Program header
   ! --------------
   CALL CRTM_Version( Version )
@@ -349,6 +352,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id, &
   !
   ! 4a. Initialise all the sensors at once
   ! --------------------------------------
+  allocate(atm(N_PROFILES), sfc(N_PROFILES))
   WRITE( *,'(/5x,"Initializing the CRTM...")' )
   err_stat = CRTM_Init( sensor_id, &
                         chinfo, &
@@ -399,7 +403,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id, &
     
     ! 5b. Allocate the ARRAYS
     ! -----------------------
-    ALLOCATE( atm_K( n_channels, N_PROFILES ), &
+    ALLOCATE( rts( n_channels, N_PROFILES),    & 
+              atm_K( n_channels, N_PROFILES ), &
               sfc_K( n_channels, N_PROFILES ), &
               rts_K( n_channels, N_PROFILES ), &
               STAT = alloc_stat )
@@ -421,6 +426,15 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id, &
       CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
       STOP
     END IF
+
+    ! The output K-MATRIX structure
+    CALL CRTM_Atmosphere_Create( atm_K, N_LAYERS, N_ABSORBERS, N_CLOUDS, N_AEROSOLS )
+    IF ( ANY(.NOT. CRTM_Atmosphere_Associated(atm_K)) ) THEN
+      message = 'Error allocating CRTM K-matrix Atmosphere structure'
+      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
+      STOP
+    END IF
+
 
     ! ==========================================================================
     ! STEP 6. **** ASSIGN INPUT DATA ****
@@ -467,9 +481,12 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id, &
     rts_K%Radiance               = ZERO
     rts_K%Brightness_Temperature = ONE
     ! ==========================================================================
-
-
-
+    ! surface stuff! need to put something more advanced here!
+    Sfc%Water_Coverage = 1
+    Sfc%Water_Temperature = surfaceTemperature
+    Sfc%Wind_Direction = windDirection10m
+    Sfc%Wind_Speed = windSpeed10m
+    Sfc%Salinity = 33.0    
     
     ! ==========================================================================
     ! STEP 8. **** CALL THE CRTM FUNCTIONS FOR THE CURRENT SENSOR ****
@@ -480,7 +497,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id, &
                               sfc        , &  ! FORWARD  Input
                               rts_K      , &  ! K-MATRIX Input
                               geo        , &  ! Input
-                              chinfo(n:n), &  ! Input
+                              chinfo     , &  ! Input
                               atm_K      , &  ! K-MATRIX Output
                               sfc_K      , &  ! K-MATRIX Output
                               rts          )  ! FORWARD  Output
@@ -490,18 +507,25 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id, &
       STOP
     END IF
 
-
     ! ==========================================================================
     ! STEP 9. **** CLEAN UP FOR NEXT SENSOR ****
     !
     ! 9a. Deallocate the structures
     ! -----------------------------
     CALL CRTM_Atmosphere_Destroy(atm)
-
+    
 
     ! 9b. Deallocate the arrays
     ! -------------------------
-    DEALLOCATE(rts_K, sfc_k, atm_k, STAT = alloc_stat)
+    DEALLOCATE(rts_K, sfc_k, STAT = alloc_stat)
+    print *, 'whir?' 
+    ! transfer jacobians out
+    do l=1,nChan
+        temperatureJacobian(l,1:n_layers) = atm_k(l,1)%Temperature(1:n_layers)
+        humidityJacobian(l,1:n_layers) = atm_k(l,1)%Absorber(1:n_layers,1)
+        ozoneJacobian(l,1:n_layers) = atm_k(l,1)%Absorber(1:n_layers,2)
+    enddo
+    DEALLOCATE(atm_k, STAT = alloc_stat)
     ! ==========================================================================
 
   END DO Sensor_Loop

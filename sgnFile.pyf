@@ -25,17 +25,17 @@ python module pycrtm ! in
                 real intent(in) :: winddirection10m
                 real dimension(nchan),intent(out),depend(nchan) :: outtb
             end subroutine wrap_forward
-            subroutine wrap_k_matrix(coefficientpath,sensor_id,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_layers,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,surfacetype,surfacetemperature,windspeed10m,winddirection10m,outtb,outtransmission,temperaturejacobian,humidityjacobian,ozonejacobian) ! in :pycrtm:pycrtm.f90:pycrtm
+            subroutine wrap_k_matrix(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_layers,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,surfacetype,surfacetemperature,windspeed10m,winddirection10m,outtb,outtransmission,temperaturejacobian,humidityjacobian,ozonejacobian) ! in :pycrtm:pycrtm.f90:pycrtm
                 use crtm_module
                 character*1024 intent(in) :: coefficientpath
-                character(len=256) dimension(1),intent(in) :: sensor_id
+                character*(*) intent(in) :: sensor_id_in
                 real intent(in) :: zenithangle
                 real intent(in) :: scanangle
                 real intent(in) :: azimuthangle
                 real intent(in) :: solarangle
                 integer intent(in) :: nchan
-                integer, optional,intent(in),check(len(pressurelevels)>=n_layers),depend(pressurelevels) :: n_layers=len(pressurelevels)
-                real dimension(n_layers),intent(in) :: pressurelevels
+                integer, optional,intent(in),check((len(pressurelevels)-1)>=n_layers),depend(pressurelevels) :: n_layers=(len(pressurelevels)-1)
+                real dimension(n_layers + 1),intent(in) :: pressurelevels
                 real dimension(n_layers),intent(in),depend(n_layers) :: pressurelayers
                 real dimension(n_layers),intent(in),depend(n_layers) :: temperaturelayers
                 real dimension(n_layers),intent(in),depend(n_layers) :: humiditylayers

@@ -21,37 +21,34 @@ def main(coefficientPath, sensor_id,\
     p['Trop']['humidityLayers'],\
     p['Trop']['ozoneConcLayers'] = pycrtm.test_data_tropical()
 
-    print(p)    
     for k in list(p.keys()):
         N_LAYERS = p[k]['pressureLayers'].shape[0]
-        print(p[k]['pressureLayers'].shape)
-        print(sensor_id, len(sensor_id))
-        print(N_LAYERS)
-
+        
         Tb = pycrtm.wrap_forward( coefficientPath, sensor_id,\
                               zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan, \
                               p[k]['pressureLevels'], p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['humidityLayers'], p[k]['ozoneConcLayers'],\
                               surfaceType, surfaceTemperature, windSpeed10m, windDirection10m )
         print(Tb)
-        """
+        
         Tb, Transmission,\
         temperatureJacobian,\
         humidityJacobian,\
         ozoneJacobian = pycrtm.wrap_k_matrix( coefficientPath, sensor_id,\
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan,\
-                        N_LAYERS, p[k]['pressureLevels'],p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['humidityLayers'], p[k]['ozoneConcLayers'],\
+                        p[k]['pressureLevels'], p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['humidityLayers'], p[k]['ozoneConcLayers'],\
                         surfaceType, surfaceTemperature, windSpeed10m, windDirection10m )
-        """
+        print(ozoneJacobian)
 if __name__ == "__main__":
     pathInfo = configparser.ConfigParser()
     pathInfo.read('crtm.cfg')
     coefficientPath = pathInfo['CRTM']['coeffs_dir']
-    sensor_id = 'atms_n20'
+    #sensor_id = 'atms_n20'
+    sensor_id = 'cris_npp'
     zenithAngle = float(30.0)
     scanAngle = float(26.37293341421)
     azimuthAngle = float(0.0)
     solarAngle = float(0.0)
-    nChan = int(22)
+    nChan = int(1305)
     surfaceType = int(1)
     surfaceTemperature = float(293.15)
     windSpeed10m = float(0.0)

@@ -53,9 +53,9 @@ def main( a ):
 
         # remove untarred directory/now useless mess 
         shutil.rmtree(glob.glob('REL-*')[0])
-        print("Modifying crtm.cfg")
-        modifyOptionsCfg( 'crtm.cfg', scriptDir, installPath )
 
+    print("Modifying crtm.cfg")
+    modifyOptionsCfg( 'crtm.cfg', scriptDir, installPath )
     print("Making python module.")
     # build python module
     # Set compile environment variables.
@@ -246,7 +246,7 @@ def modifyOptionsCfg( filename, scriptDir, installLocation ):
         with open(os.path.join(scriptDir, filename), 'r') as oldFile:
             for l in oldFile:
                 if('coeffs_dir' in l):
-                    newFile.write(l.replace(l,'coeffs_dir = '+os.path.join(installLocation,'crtm','crtm_coef')+os.linesep))
+                    newFile.write(l.replace(l,'coeffs_dir = '+os.path.join(os.path.join(installLocation,'crtm','crtm_coef'),'')+os.linesep))
                 else:
                     newFile.write(l)
     os.rename(filename+'new', filename)
