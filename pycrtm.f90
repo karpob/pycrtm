@@ -62,8 +62,8 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   CHARACTER(256) :: message, version
   INTEGER :: err_stat, alloc_stat
   INTEGER :: n_channels
-  INTEGER :: l, m, n, nc
-
+  INTEGER :: l, m, n, nc, ll,mm, nn
+  real, dimension(n_layers,nchan) :: outTau
 
 
   ! ============================================================================
@@ -80,8 +80,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   TYPE(CRTM_Atmosphere_type)              :: atm(N_PROFILES)
   TYPE(CRTM_Surface_type)                 :: sfc(N_PROFILES)
   TYPE(CRTM_RTSolution_type), ALLOCATABLE :: rts(:,:)
-  
-
+  type(crtm_options_type)     , dimension(N_PROFILES)        :: options
   sensor_id(1) = sensor_id_in
   ! Program header
   ! --------------
@@ -187,7 +186,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     Sfc%Water_Temperature = surfaceTemperature
     Sfc%Wind_Direction = windDirection10m
     Sfc%Wind_Speed = windSpeed10m
-    Sfc%Salinity = 33.0    
+    Sfc%Salinity = 35.0    
     ! ==========================================================================
     ! STEP 8. **** CALL THE CRTM FUNCTIONS FOR THE CURRENT SENSOR ****
     !
@@ -195,17 +194,29 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     
     ! 8a. The forward model
     ! ---------------------
+
+    call crtm_options_create( options, nChan )
+    if ( any(.not. crtm_options_associated( options )) ) then 
+        call display_message( subroutine_name, 'error allocating options', FAILURE)  
+        return
+    endif
+
+    options%Use_Emissivity = .false.
+    options%Use_Direct_Reflectivity = .false.
+
     err_stat = CRTM_Forward( atm        , &  ! Input
                              sfc        , &  ! Input
                              geo        , &  ! Input
                              chinfo, &  ! Input
-                             rts          )  ! Output
+                             rts,    & ! Output
+                            options = options ) 
     IF ( err_stat /= SUCCESS ) THEN
       message = 'Error calling CRTM Forward Model for '//TRIM(sensor_id(n))
       CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
       STOP
     END IF
-    
+    print *, 'whir'
+    print *, 'allocated?', allocated(rts(1,1)%Layer_Optical_Depth)
     ! ============================================================================
     ! 8c. **** OUTPUT THE RESULTS TO SCREEN **** (Or transfer it into a series of arrays out of this thing!)
     !
@@ -283,8 +294,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   real, intent(in) :: pressureLayers(N_LAYERS), temperatureLayers(N_LAYERS), humidityLayers(N_LAYERS), ozoneConcLayers(N_LAYERS)
   integer, intent(in) :: surfaceType
   real, intent(in) :: surfaceTemperature, windSpeed10m, windDirection10m
-  real, intent(out), dimension(nChan) :: outTb
-  real, intent(out), dimension(nChan,N_LAYERS) :: outTransmission, temperatureJacobian, humidityJacobian, ozoneJacobian
+  real, intent(out) :: outTb(nChan)
+  real, intent(out) :: outTransmission(nChan,N_LAYERS), temperatureJacobian(nChan,N_LAYERS)
+  real, intent(out) ::  humidityJacobian(nChan,N_LAYERS), ozoneJacobian(nChan, N_LAYERS)
 
 
   character(len=256) :: sensor_id(1)
@@ -357,7 +369,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   err_stat = CRTM_Init( sensor_id, &
                         chinfo, &
                         File_Path=coefficientPath, &
-                        Quiet=.TRUE.)
+                        MWwaterCoeff_File = 'FASTEM5.MWwater.EmisCoeff.bin', & 
+                        Quiet=.False.)
   IF ( err_stat /= SUCCESS ) THEN
     message = 'Error initializing CRTM'
     CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
@@ -435,6 +448,17 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
       STOP
     END IF
 
+    call crtm_rtsolution_create( rts, n_layers )
+    if ( any(.not. crtm_rtsolution_associated( rts )) ) then
+        call display_message( subroutine_name, 'error allocating rts', err_stat)
+        return
+    end if
+    
+    call crtm_rtsolution_create( rts_k, n_layers )
+    if ( any(.not. crtm_rtsolution_associated( rts_k )) ) then
+        call display_message( subroutine_name, 'error allocating rts_k', err_stat)
+        return
+    end if
 
     ! ==========================================================================
     ! STEP 6. **** ASSIGN INPUT DATA ****
@@ -501,6 +525,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
                               atm_K      , &  ! K-MATRIX Output
                               sfc_K      , &  ! K-MATRIX Output
                               rts          )  ! FORWARD  Output
+
     IF ( err_stat /= SUCCESS ) THEN
       message = 'Error calling CRTM K-Matrix Model for '//TRIM(SENSOR_ID(n))
       CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
@@ -512,20 +537,22 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     !
     ! 9a. Deallocate the structures
     ! -----------------------------
-    CALL CRTM_Atmosphere_Destroy(atm)
     
 
     ! 9b. Deallocate the arrays
     ! -------------------------
-    DEALLOCATE(rts_K, sfc_k, STAT = alloc_stat)
     print *, 'whir?' 
     ! transfer jacobians out
     do l=1,nChan
         temperatureJacobian(l,1:n_layers) = atm_k(l,1)%Temperature(1:n_layers)
         humidityJacobian(l,1:n_layers) = atm_k(l,1)%Absorber(1:n_layers,1)
         ozoneJacobian(l,1:n_layers) = atm_k(l,1)%Absorber(1:n_layers,2)
+        outTransmission(l,1:n_layers) = exp(-1.*RTS(l,1)%Layer_Optical_Depth)
     enddo
+    outTb = rts(:,1)%Brightness_Temperature 
+    CALL CRTM_Atmosphere_Destroy(atm)
     DEALLOCATE(atm_k, STAT = alloc_stat)
+    DEALLOCATE(rts_K, sfc_k, STAT = alloc_stat)
     ! ==========================================================================
 
   END DO Sensor_Loop
