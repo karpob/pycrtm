@@ -4,7 +4,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan, &
                         N_LAYERS, pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
                         surfaceType, surfaceTemperature, windSpeed10m, windDirection10m, & 
-                        outTb )      
+                        outTb, outTransmission )      
 
   ! ============================================================================
   ! STEP 1. **** ENVIRONMENT SETUP FOR CRTM USAGE ****
@@ -26,7 +26,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   integer, intent(in) :: surfaceType
   real, intent(in) :: surfaceTemperature, windSpeed10m, windDirection10m
   real, intent(out) :: outTb(nChan)
-  
+  real, intent(out) :: outTransmission(nChan,N_LAYERS)
   character(len=256), dimension(1) :: sensor_id
 
 
@@ -200,6 +200,12 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
         call display_message( subroutine_name, 'error allocating options', FAILURE)  
         return
     endif
+    ! Need this to get transmission out of solution, otherwise won't be allocated !!!
+    call crtm_rtsolution_create( rts, n_layers )
+    if ( any(.not. crtm_rtsolution_associated( rts )) ) then
+        call display_message( subroutine_name, 'error allocating rts', err_stat)
+        return
+    end if
 
     options%Use_Emissivity = .false.
     options%Use_Direct_Reflectivity = .false.
@@ -215,8 +221,6 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
       CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
       STOP
     END IF
-    print *, 'whir'
-    print *, 'allocated?', allocated(rts(1,1)%Layer_Optical_Depth)
     ! ============================================================================
     ! 8c. **** OUTPUT THE RESULTS TO SCREEN **** (Or transfer it into a series of arrays out of this thing!)
     !
@@ -224,7 +228,10 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! CRTM_RTSolution_Inspect in the file CRTM_RTSolution_Define.f90 to
     ! select the needed variables for outputs.  These variables are contained
     ! in the structure RTSolution.
-    
+     do l=1,nChan
+        outTransmission(l,1:n_layers) = exp(-1.*rts(l,1)%Layer_Optical_Depth)
+    enddo
+   
     outTb = rts(:,1)%Brightness_Temperature 
     
     ! ==========================================================================
@@ -541,13 +548,12 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
 
     ! 9b. Deallocate the arrays
     ! -------------------------
-    print *, 'whir?' 
     ! transfer jacobians out
     do l=1,nChan
         temperatureJacobian(l,1:n_layers) = atm_k(l,1)%Temperature(1:n_layers)
         humidityJacobian(l,1:n_layers) = atm_k(l,1)%Absorber(1:n_layers,1)
         ozoneJacobian(l,1:n_layers) = atm_k(l,1)%Absorber(1:n_layers,2)
-        outTransmission(l,1:n_layers) = exp(-1.*RTS(l,1)%Layer_Optical_Depth)
+        outTransmission(l,1:n_layers) = exp(-1.*rts(l,1)%Layer_Optical_Depth)
     enddo
     outTb = rts(:,1)%Brightness_Temperature 
     CALL CRTM_Atmosphere_Destroy(atm)

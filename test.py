@@ -23,13 +23,13 @@ def main(coefficientPath, sensor_id,\
 
     for k in list(p.keys()):
         N_LAYERS = p[k]['pressureLayers'].shape[0]
-        """ 
-        Tb = pycrtm.wrap_forward( coefficientPath, sensor_id,\
+         
+        Tb,transmission = pycrtm.wrap_forward( coefficientPath, sensor_id,\
                               zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan, \
                               p[k]['pressureLevels'], p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['humidityLayers'], p[k]['ozoneConcLayers'],\
                               surfaceType, surfaceTemperature, windSpeed10m, windDirection10m )
-        print(Tb)
-        """ 
+        print(Tb,transmission)
+        
         Tb, Transmission,\
         temperatureJacobian,\
         humidityJacobian,\
