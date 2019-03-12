@@ -178,7 +178,8 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     !  The Sensor_SCAN_ANGLE is optional.  !! BMK- Oh? this would be nice. Not sure if that's true though. Think you need it for FastEm?
     CALL CRTM_Geometry_SetValue( geo, &
                                  Sensor_Zenith_Angle = dble(zenithAngle), &
-                                 Sensor_Scan_Angle   = dble(scanAngle) )
+                                 Sensor_Scan_Angle   = dble(scanAngle),   & 
+                                 Sensor_Azimuth_Angle = dble(azimuthAngle) )
     ! ==========================================================================
 
     ! surface stuff! need to put something more advanced here!
@@ -229,9 +230,9 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! select the needed variables for outputs.  These variables are contained
     ! in the structure RTSolution.
      do l=1,nChan
-        outTransmission(l,1:n_layers) = exp(-1.*rts(l,1)%Layer_Optical_Depth)
+        outTransmission(l,1:n_layers) = rts(l,1)%Layer_Optical_Depth
     enddo
-   
+    print *, 'Emissivity Crtm',rts(:,1)%Surface_Emissivity 
     outTb = rts(:,1)%Brightness_Temperature 
     
     ! ==========================================================================
@@ -491,7 +492,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     !  The Sensor_SCAN_ANGLE is optional.  !! BMK- Oh? this would be nice. Not sure if that's true though.
     CALL CRTM_Geometry_SetValue( geo, &
                                  Sensor_Zenith_Angle = dble(zenithAngle), &
-                                 Sensor_Scan_Angle   = dble(scanAngle) )
+                                 Sensor_Scan_Angle   = dble(scanAngle),   &
+                                 Sensor_Azimuth_Angle = dble(azimuthAngle) )
     ! ==========================================================================
 
 
@@ -517,7 +519,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     Sfc%Water_Temperature = surfaceTemperature
     Sfc%Wind_Direction = windDirection10m
     Sfc%Wind_Speed = windSpeed10m
-    Sfc%Salinity = 33.0    
+    Sfc%Salinity = 35.0    
     
     ! ==========================================================================
     ! STEP 8. **** CALL THE CRTM FUNCTIONS FOR THE CURRENT SENSOR ****
@@ -553,7 +555,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
         temperatureJacobian(l,1:n_layers) = atm_k(l,1)%Temperature(1:n_layers)
         humidityJacobian(l,1:n_layers) = atm_k(l,1)%Absorber(1:n_layers,1)
         ozoneJacobian(l,1:n_layers) = atm_k(l,1)%Absorber(1:n_layers,2)
-        outTransmission(l,1:n_layers) = exp(-1.*rts(l,1)%Layer_Optical_Depth)
+        outTransmission(l,1:n_layers) = rts(l,1)%Layer_Optical_Depth
     enddo
     outTb = rts(:,1)%Brightness_Temperature 
     CALL CRTM_Atmosphere_Destroy(atm)
