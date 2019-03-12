@@ -201,7 +201,7 @@ if __name__ == "__main__":
     for k in list(spcCoeff.keys()):
         print(k,spcCoeff[k])
 
-    a, b = readTauCoeffODPS(os.path.join(pathInfo['CRTM']['coeffs_dir'],'cris_npp.TauCoeff.bin'))
+    a, b = readTauCoeffODPS(os.path.join(pathInfo['CRTM']['coeffs_dir'],'cris399_npp.TauCoeff.bin'))
     print('ODPS')
     for k in list(a.keys()):
         print(k, a[k])
