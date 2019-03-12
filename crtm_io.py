@@ -196,17 +196,15 @@ if __name__ == "__main__":
     pathInfo = configparser.ConfigParser()
     # Stuff to get the installed rttov path, and import pyrttov interface
     pathInfo.read('crtm.cfg')
-    """
     spcCoeff = readSpcCoeff(os.path.join(pathInfo['CRTM']['coeffs_dir'],'cris399_npp.SpcCoeff.bin'))
-
+    print('Spc Coeffs')
     for k in list(spcCoeff.keys()):
         print(k,spcCoeff[k])
 
-    """
     a, b = readTauCoeffODPS(os.path.join(pathInfo['CRTM']['coeffs_dir'],'cris_npp.TauCoeff.bin'))
-#    print('ODPS')
-#    for k in list(a.keys()):
-#        print(k, a[k])
+    print('ODPS')
+    for k in list(a.keys()):
+        print(k, a[k])
     print('OPTRAN')
     for k in list(b.keys()):
         print(k,b[k])
