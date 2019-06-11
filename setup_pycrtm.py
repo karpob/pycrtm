@@ -52,7 +52,7 @@ def main( a ):
         os.chdir(scriptDir)
 
         # remove untarred directory/now useless mess 
-        shutil.rmtree(glob.glob('REL-*')[0])
+        #shutil.rmtree(glob.glob('REL-*')[0])
 
     print("Modifying crtm.cfg")
     modifyOptionsCfg( 'crtm.cfg', scriptDir, installPath )
@@ -127,6 +127,8 @@ def downloadExtractTar( tarballPath, scriptDir ):
                This will likely take a while, because \
                this server is *insanely* slow.".format ('http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz'))
         urllib.request.urlretrieve("http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz", "crtm_v2.3.0.tar.gz") 
+    print('tarballPath',tarballPath)
+    print(glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz')))
     print("Untarring CRTM Tarball {}".format (glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz'))[0]))
     t = tarfile.open( glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz'))[0]  )
     t.extractall( path = scriptDir )

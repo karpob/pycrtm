@@ -3,6 +3,7 @@ contains
 subroutine wrap_forward( coefficientPath, sensor_id_in, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan, &
                         N_LAYERS, pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
+                        aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
                         surfaceType, surfaceTemperature, windSpeed10m, windDirection10m, & 
                         outTb, outTransmission )      
 
@@ -23,7 +24,8 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   integer, intent(in) :: nChan, N_Layers
   real, intent(in) :: pressureLevels(N_LAYERS+1)
   real, intent(in) :: pressureLayers(N_LAYERS), temperatureLayers(N_LAYERS), humidityLayers(N_LAYERS), ozoneConcLayers(N_LAYERS)
-  integer, intent(in) :: surfaceType
+  real, intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
+  integer, intent(in) :: surfaceType, aerosolType
   real, intent(in) :: surfaceTemperature, windSpeed10m, windDirection10m
   real, intent(out) :: outTb(nChan)
   real, intent(out) :: outTransmission(nChan,N_LAYERS)
@@ -47,7 +49,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   INTEGER, PARAMETER :: N_PROFILES  = 1
   INTEGER, PARAMETER :: N_ABSORBERS = 2
   INTEGER, PARAMETER :: N_CLOUDS    = 0
-  INTEGER, PARAMETER :: N_AEROSOLS  = 0
+  INTEGER, PARAMETER :: N_AEROSOLS  = 1
   
   ! Sensor information
   INTEGER     , PARAMETER :: N_SENSORS = 1
@@ -171,6 +173,9 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     atm(1)%Absorber(:,1) = humidityLayers
     atm(1)%Absorber(:,2) = ozoneConcLayers
 
+    atm(1)%Aerosol(1)%Type = aerosolType
+    atm(1)%Aerosol(1)%Effective_Radius = aerosolEffectiveRadius
+    atm(1)%Aerosol(1)%Concentration = aerosolConcentration
 
     ! 6b. Geometry input
     ! ------------------
@@ -270,6 +275,7 @@ end subroutine wrap_forward
 subroutine wrap_k_matrix( coefficientPath, sensor_id_in, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan, &
                         N_LAYERS, pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
+                        aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
                         surfaceType, surfaceTemperature, windSpeed10m, windDirection10m, & 
                         outTb, outTransmission, & 
                         temperatureJacobian, humidityJacobian, ozoneJacobian )      
@@ -300,7 +306,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   integer, intent(in) :: nChan, N_Layers 
   real, intent(in) :: pressureLevels(N_LAYERS+1)
   real, intent(in) :: pressureLayers(N_LAYERS), temperatureLayers(N_LAYERS), humidityLayers(N_LAYERS), ozoneConcLayers(N_LAYERS)
-  integer, intent(in) :: surfaceType
+  real, intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
+  integer, intent(in) :: surfaceType, aerosolType
   real, intent(in) :: surfaceTemperature, windSpeed10m, windDirection10m
   real, intent(out) :: outTb(nChan)
   real, intent(out) :: outTransmission(nChan,N_LAYERS), temperatureJacobian(nChan,N_LAYERS)
@@ -317,7 +324,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   INTEGER, PARAMETER :: N_PROFILES  = 1
   INTEGER, PARAMETER :: N_ABSORBERS = 2
   INTEGER, PARAMETER :: N_CLOUDS    = 0
-  INTEGER, PARAMETER :: N_AEROSOLS  = 0
+  INTEGER, PARAMETER :: N_AEROSOLS  = 1
   
   ! Sensor information
   INTEGER     , PARAMETER :: N_SENSORS = 1
@@ -485,6 +492,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     atm(1)%Temperature = temperatureLayers
     atm(1)%Absorber(:,1) = humidityLayers
     atm(1)%Absorber(:,2) = ozoneConcLayers
+    atm(1)%Aerosol(1)%Type = aerosolType
+    atm(1)%Aerosol(1)%Effective_Radius = aerosolEffectiveRadius
+    atm(1)%Aerosol(1)%Concentration = aerosolConcentration
 
     ! 6b. Geometry input
     ! ------------------
@@ -577,9 +587,11 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   END IF
   ! ==========================================================================
 end subroutine wrap_k_matrix
-  SUBROUTINE test_data_us_std(Level_Pressure, Pressure, Temperature, water_vapor, ozone )
+  SUBROUTINE test_data_us_std(Level_Pressure, Pressure, Temperature, water_vapor, ozone, &
+                              aerosolEffectiveRadius, aerosolConcentration, aerosolType )
     real, intent(out), dimension(93) :: Level_Pressure 
-    real, intent(out), dimension(92) :: Pressure, Temperature, water_vapor, ozone
+    real, intent(out), dimension(92) :: Pressure, Temperature, water_vapor, ozone, aerosolEffectiveRadius, aerosolConcentration
+    integer, intent(out) :: aerosolType
     ! ...Profile data
     Level_Pressure = &
     (/0.714,   0.975,   1.297,   1.687,   2.153,   2.701,   3.340,   4.077, &
@@ -650,6 +662,50 @@ end subroutine wrap_k_matrix
       6.368E-02,6.070E-02,5.778E-02,5.481E-02,5.181E-02,4.920E-02,4.700E-02,4.478E-02, &
       4.207E-02,3.771E-02,3.012E-02,1.941E-02,9.076E-03,2.980E-03,5.117E-03,1.160E-02, &
       1.428E-02,1.428E-02,1.428E-02,1.428E-02/)
+
+    !AerosolType = DUST_AEROSOL
+    aerosolType = 1
+    aerosolEffectiveRadius = & ! microns
+      (/0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 5.305110E-16, &
+        7.340409E-16, 1.037097E-15, 1.496791E-15, 2.207471E-15, 3.327732E-15, &
+        5.128933E-15, 8.083748E-15, 1.303055E-14, 2.148368E-14, 3.622890E-14, &
+        6.248544E-14, 1.102117E-13, 1.987557E-13, 3.663884E-13, 6.901587E-13, &
+        1.327896E-12, 2.608405E-12, 5.228012E-12, 1.068482E-11, 2.225098E-11, &
+        4.717675E-11, 1.017447E-10, 2.229819E-10, 4.960579E-10, 1.118899E-09, &
+        2.555617E-09, 5.902789E-09, 1.376717E-08, 3.237321E-08, 7.662427E-08, &
+        1.822344E-07, 4.346896E-07, 1.037940E-06, 2.475858E-06, 5.887266E-06, &
+        1.392410E-05, 3.267943E-05, 7.592447E-05, 1.741777E-04, 3.935216E-04, &
+        8.732308E-04, 1.897808E-03, 4.027868E-03, 8.323272E-03, 1.669418E-02, &
+        3.239702E-02, 6.063055E-02, 1.090596E-01, 1.878990E-01, 3.089856E-01, &
+        4.832092E-01, 7.159947E-01, 1.001436E+00, 1.317052E+00, 1.622354E+00, &
+        1.864304E+00, 1.990457E+00, 1.966354E+00, 1.789883E+00, 1.494849E+00, &
+        1.140542E+00, 7.915451E-01, 4.974823E-01, 2.818937E-01, 1.433668E-01, &
+        6.514795E-02, 2.633057E-02, 9.421763E-03, 2.971053E-03, 8.218245E-04/)
+    aerosolConcentration = & ! kg/m^2
+      (/0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
+        0.000000E+00, 0.000000E+00, 0.000000E+00, 2.458105E-18, 1.983430E-16, &
+        1.191432E-14, 5.276880E-13, 1.710270E-11, 4.035105E-10, 6.911389E-09, &
+        8.594215E-08, 7.781797E-07, 5.162773E-06, 2.534018E-05, 9.325154E-05, &
+        2.617738E-04, 5.727150E-04, 1.002153E-03, 1.446048E-03, 1.782757E-03, &
+        1.955759E-03, 1.999206E-03, 1.994698E-03, 1.913109E-03, 1.656122E-03, &
+        1.206328E-03, 6.847261E-04, 2.785695E-04, 7.418821E-05, 1.172680E-05, &
+        9.900895E-07, 3.987399E-08, 6.786932E-10, 4.291151E-12, 8.785440E-15/)
+ 
   end subroutine test_data_us_std
 
   SUBROUTINE test_data_tropical(Level_Pressure, Pressure, Temperature, water_vapor, ozone)
