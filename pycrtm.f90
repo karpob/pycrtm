@@ -30,6 +30,15 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   real, intent(out) :: outTb(nChan)
   real, intent(out) :: outTransmission(nChan,N_LAYERS)
   character(len=256), dimension(1) :: sensor_id
+  INTEGER, PARAMETER :: TUNDRA_SURFACE_TYPE         = 10  ! NPOESS Land surface type for IR/VIS Land SfcOptics
+  INTEGER, PARAMETER :: SCRUB_SURFACE_TYPE          =  7  ! NPOESS Land surface type for IR/VIS Land SfcOptics
+  INTEGER, PARAMETER :: COARSE_SOIL_TYPE            =  1  ! Soil type                for MW land SfcOptics
+  INTEGER, PARAMETER :: GROUNDCOVER_VEGETATION_TYPE =  7  ! Vegetation type          for MW Land SfcOptics
+  INTEGER, PARAMETER :: BARE_SOIL_VEGETATION_TYPE   = 11  ! Vegetation type          for MW Land SfcOptics
+  INTEGER, PARAMETER :: SEA_WATER_TYPE              =  1  ! Water type               for all SfcOptics
+  INTEGER, PARAMETER :: FRESH_SNOW_TYPE             =  2  ! NPOESS Snow type         for IR/VIS SfcOptics
+  INTEGER, PARAMETER :: FRESH_ICE_TYPE              =  1  ! NPOESS Ice type          for IR/VIS SfcOptics
+
 
 
   ! --------------------------
@@ -188,11 +197,34 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! ==========================================================================
 
     ! surface stuff! need to put something more advanced here!
-    Sfc%Water_Coverage = 1
+    !Sfc%Water_Coverage = 1
     Sfc%Water_Temperature = surfaceTemperature
     Sfc%Wind_Direction = windDirection10m
     Sfc%Wind_Speed = windSpeed10m
-    Sfc%Salinity = 35.0    
+    Sfc%Salinity = 35.0 
+    ! 4a.1 Profile #1
+    ! ---------------
+    ! ...Land surface characteristics
+    sfc%Land_Coverage     = 0.1d0
+    sfc%Land_Type         = TUNDRA_SURFACE_TYPE
+    sfc%Land_Temperature  = 272.0
+    sfc%Lai               = 0.17
+    sfc%Soil_Type         = COARSE_SOIL_TYPE
+    sfc%Vegetation_Type   = GROUNDCOVER_VEGETATION_TYPE
+    ! ...Water surface characteristics
+    sfc%Water_Coverage    = 0.5d0
+    sfc%Water_Type        = SEA_WATER_TYPE
+    sfc%Water_Temperature = 275.0
+    ! ...Snow coverage characteristics
+    sfc%Snow_Coverage    = 0.25d0
+    sfc%Snow_Type        = FRESH_SNOW_TYPE
+    sfc%Snow_Temperature = 265.0
+    ! ...Ice surface characteristics
+    sfc%Ice_Coverage    = 0.15d0
+    sfc%Ice_Type        = FRESH_ICE_TYPE
+    sfc%Ice_Temperature = 269.0
+
+   
     ! ==========================================================================
     ! STEP 8. **** CALL THE CRTM FUNCTIONS FOR THE CURRENT SENSOR ****
     !
@@ -312,7 +344,14 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   real, intent(out) :: outTb(nChan)
   real, intent(out) :: outTransmission(nChan,N_LAYERS), temperatureJacobian(nChan,N_LAYERS)
   real, intent(out) ::  humidityJacobian(nChan,N_LAYERS), ozoneJacobian(nChan, N_LAYERS)
-
+  INTEGER, PARAMETER :: TUNDRA_SURFACE_TYPE         = 10  ! NPOESS Land surface type for IR/VIS Land SfcOptics
+  INTEGER, PARAMETER :: SCRUB_SURFACE_TYPE          =  7  ! NPOESS Land surface type for IR/VIS Land SfcOptics
+  INTEGER, PARAMETER :: COARSE_SOIL_TYPE            =  1  ! Soil type                for MW land SfcOptics
+  INTEGER, PARAMETER :: GROUNDCOVER_VEGETATION_TYPE =  7  ! Vegetation type          for MW Land SfcOptics
+  INTEGER, PARAMETER :: BARE_SOIL_VEGETATION_TYPE   = 11  ! Vegetation type          for MW Land SfcOptics
+  INTEGER, PARAMETER :: SEA_WATER_TYPE              =  1  ! Water type               for all SfcOptics
+  INTEGER, PARAMETER :: FRESH_SNOW_TYPE             =  2  ! NPOESS Snow type         for IR/VIS SfcOptics
+  INTEGER, PARAMETER :: FRESH_ICE_TYPE              =  1  ! NPOESS Ice type          for IR/VIS SfcOptics
 
   character(len=256) :: sensor_id(1)
   ! ============================================================================
@@ -525,11 +564,35 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     rts_K%Brightness_Temperature = ONE
     ! ==========================================================================
     ! surface stuff! need to put something more advanced here!
-    Sfc%Water_Coverage = 1
+    !Sfc%Water_Coverage = 1
     Sfc%Water_Temperature = surfaceTemperature
     Sfc%Wind_Direction = windDirection10m
     Sfc%Wind_Speed = windSpeed10m
     Sfc%Salinity = 35.0    
+
+
+    ! 4a.1 Profile #1
+    ! ---------------
+    ! ...Land surface characteristics
+    sfc%Land_Coverage     = 0.1d0
+    sfc%Land_Type         = TUNDRA_SURFACE_TYPE
+    sfc%Land_Temperature  = 272.0
+    sfc%Lai               = 0.17
+    sfc%Soil_Type         = COARSE_SOIL_TYPE
+    sfc%Vegetation_Type   = GROUNDCOVER_VEGETATION_TYPE
+    ! ...Water surface characteristics
+    sfc%Water_Coverage    = 0.5d0
+    sfc%Water_Type        = SEA_WATER_TYPE
+    sfc%Water_Temperature = 275.0
+    ! ...Snow coverage characteristics
+    sfc%Snow_Coverage    = 0.25d0
+    sfc%Snow_Type        = FRESH_SNOW_TYPE
+    sfc%Snow_Temperature = 265.0
+    ! ...Ice surface characteristics
+    sfc%Ice_Coverage    = 0.15d0
+    sfc%Ice_Type        = FRESH_ICE_TYPE
+    sfc%Ice_Temperature = 269.0
+
     
     ! ==========================================================================
     ! STEP 8. **** CALL THE CRTM FUNCTIONS FOR THE CURRENT SENSOR ****
