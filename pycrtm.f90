@@ -4,6 +4,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan, &
                         N_LAYERS, pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
+                        cloudEffectiveRadius, cloudConcentration, cloudType, & 
                         surfaceType, surfaceTemperature, windSpeed10m, windDirection10m, & 
                         outTb, outTransmission )      
 
@@ -25,7 +26,8 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   real, intent(in) :: pressureLevels(N_LAYERS+1)
   real, intent(in) :: pressureLayers(N_LAYERS), temperatureLayers(N_LAYERS), humidityLayers(N_LAYERS), ozoneConcLayers(N_LAYERS)
   real, intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
-  integer, intent(in) :: surfaceType, aerosolType
+  real, intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS)
+  integer, intent(in) :: surfaceType, aerosolType, cloudType
   real, intent(in) :: surfaceTemperature, windSpeed10m, windDirection10m
   real, intent(out) :: outTb(nChan)
   real, intent(out) :: outTransmission(nChan,N_LAYERS)
@@ -57,7 +59,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   ! Profile dimensions
   INTEGER, PARAMETER :: N_PROFILES  = 1
   INTEGER, PARAMETER :: N_ABSORBERS = 2
-  INTEGER, PARAMETER :: N_CLOUDS    = 0
+  INTEGER, PARAMETER :: N_CLOUDS    = 1 
   INTEGER, PARAMETER :: N_AEROSOLS  = 1
   
   ! Sensor information
@@ -186,6 +188,9 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     atm(1)%Aerosol(1)%Effective_Radius = aerosolEffectiveRadius
     atm(1)%Aerosol(1)%Concentration = aerosolConcentration
 
+    atm(1)%Cloud(1)%Type = cloudType
+    atm(1)%Cloud(1)%Effective_Radius = cloudEffectiveRadius
+    atm(1)%Cloud(1)%Water_Content = cloudConcentration
     ! 6b. Geometry input
     ! ------------------
     ! All profiles are given the same value
@@ -308,6 +313,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan, &
                         N_LAYERS, pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
+                        cloudEffectiveRadius, cloudConcentration, cloudType, & 
                         surfaceType, surfaceTemperature, windSpeed10m, windDirection10m, & 
                         outTb, outTransmission, & 
                         temperatureJacobian, humidityJacobian, ozoneJacobian )      
@@ -339,7 +345,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   real, intent(in) :: pressureLevels(N_LAYERS+1)
   real, intent(in) :: pressureLayers(N_LAYERS), temperatureLayers(N_LAYERS), humidityLayers(N_LAYERS), ozoneConcLayers(N_LAYERS)
   real, intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
-  integer, intent(in) :: surfaceType, aerosolType
+  real, intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS)
+  integer, intent(in) :: surfaceType, aerosolType, cloudType
   real, intent(in) :: surfaceTemperature, windSpeed10m, windDirection10m
   real, intent(out) :: outTb(nChan)
   real, intent(out) :: outTransmission(nChan,N_LAYERS), temperatureJacobian(nChan,N_LAYERS)
@@ -362,7 +369,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   ! Profile dimensions
   INTEGER, PARAMETER :: N_PROFILES  = 1
   INTEGER, PARAMETER :: N_ABSORBERS = 2
-  INTEGER, PARAMETER :: N_CLOUDS    = 0
+  INTEGER, PARAMETER :: N_CLOUDS    = 1
   INTEGER, PARAMETER :: N_AEROSOLS  = 1
   
   ! Sensor information
@@ -535,6 +542,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     atm(1)%Aerosol(1)%Effective_Radius = aerosolEffectiveRadius
     atm(1)%Aerosol(1)%Concentration = aerosolConcentration
 
+    atm(1)%Cloud(1)%Type = cloudType
+    atm(1)%Cloud(1)%Effective_Radius = cloudEffectiveRadius
+    atm(1)%Cloud(1)%Water_Content = cloudConcentration
     ! 6b. Geometry input
     ! ------------------
     ! All profiles are given the same value
@@ -651,10 +661,12 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   ! ==========================================================================
 end subroutine wrap_k_matrix
   SUBROUTINE test_data_us_std(Level_Pressure, Pressure, Temperature, water_vapor, ozone, &
-                              aerosolEffectiveRadius, aerosolConcentration, aerosolType )
+                              aerosolEffectiveRadius, aerosolConcentration, aerosolType, &
+                              cloudEffectiveRadius, cloudConcentration, cloudType )
     real, intent(out), dimension(93) :: Level_Pressure 
-    real, intent(out), dimension(92) :: Pressure, Temperature, water_vapor, ozone, aerosolEffectiveRadius, aerosolConcentration
-    integer, intent(out) :: aerosolType
+    real, intent(out), dimension(92) :: Pressure, Temperature, water_vapor, ozone, aerosolEffectiveRadius, &
+                                        aerosolConcentration,  cloudEffectiveRadius, cloudConcentration
+    integer, intent(out) :: aerosolType, cloudType
     ! ...Profile data
     Level_Pressure = &
     (/0.714,   0.975,   1.297,   1.687,   2.153,   2.701,   3.340,   4.077, &
@@ -768,6 +780,14 @@ end subroutine wrap_k_matrix
         1.955759E-03, 1.999206E-03, 1.994698E-03, 1.913109E-03, 1.656122E-03, &
         1.206328E-03, 6.847261E-04, 2.785695E-04, 7.418821E-05, 1.172680E-05, &
         9.900895E-07, 3.987399E-08, 6.786932E-10, 4.291151E-12, 8.785440E-15/)
+
+        cloudType = 1
+        cloudEffectiveRadius(:)=0.0d0
+        cloudConcentration(:)=0.0d0
+
+        cloudEffectiveRadius(75:79) = 20.0d0 ! microns
+        cloudConcentration(75:79)    = 5.0d0  ! kg/m^2
+
  
   end subroutine test_data_us_std
 

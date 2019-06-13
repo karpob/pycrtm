@@ -78,7 +78,10 @@ def main(coefficientPath, sensor_id,\
     p['US_Std']['ozoneConcLayers'],\
     p['US_Std']['aerosolEffectiveRadius'],\
     p['US_Std']['aerosolConcentration'],\
-    p['US_Std']['aerosolType'] = pycrtm.test_data_us_std()
+    p['US_Std']['aerosolType'],\
+    p['US_Std']['cloudEffectiveRadius'],\
+    p['US_Std']['cloudConcentration'],\
+    p['US_Std']['cloudType'] = pycrtm.test_data_us_std()
 
     #p['Trop']['pressureLevels'],\
     #p['Trop']['pressureLayers'],\
@@ -103,6 +106,7 @@ def main(coefficientPath, sensor_id,\
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan,\
                         p[k]['pressureLevels'], p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['humidityLayers'], p[k]['ozoneConcLayers'],\
                         p[k]['aerosolEffectiveRadius'], p[k]['aerosolConcentration'], p[k]['aerosolType'],\
+                        p[k]['cloudEffectiveRadius'], p[k]['cloudConcentration'], p[k]['cloudType'],\
                         surfaceType, surfaceTemperature, windSpeed10m, windDirection10m )
 
         h5 = h5py.File('cris_wavenumbers.h5','r')
@@ -110,7 +114,11 @@ def main(coefficientPath, sensor_id,\
         plotJacobians(chan_list, p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['ozoneConcLayers'], ozoneJacobian, 'CrIS_'+k+'_', wavenumbers, 'ozone')
         plotJacobians(chan_list, p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['ozoneConcLayers'], temperatureJacobian, 'CrIS_'+k+'_', wavenumbers, 'temperature')
         plotJacobians(chan_list, p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['humidityLayers'], humidityJacobian, 'CrIS_'+k+'_', wavenumbers, 'water')
-       
+        with open('whir.bin') as f:
+            dataTb = np.fromfile(f, dtype='<f8' )
+        plt.figure()
+        plt.plot(wavenumbers,Tb-dataTb)
+        plt.savefig('spectrum.png')       
 if __name__ == "__main__":
     pathInfo = configparser.ConfigParser()
     pathInfo.read('crtm.cfg')
