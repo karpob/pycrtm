@@ -4,7 +4,7 @@
 python module pycrtm ! in 
     interface  ! in :pycrtm
         module pycrtm ! in :pycrtm:pycrtm.f90
-            subroutine wrap_forward(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_layers,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,surfacetype,surfacetemperature,windspeed10m,winddirection10m,outtb,outtransmission) ! in :pycrtm:pycrtm.f90:pycrtm
+            subroutine wrap_forward(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_layers,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,surfacetype,surfacetemperature,windspeed10m,winddirection10m,outtb,outtransmission) ! in :pycrtm:pycrtm.f90:pycrtm
                 use crtm_module
                 character*(*) intent(in) :: coefficientpath
                 character*(*) intent(in) :: sensor_id_in
@@ -19,6 +19,7 @@ python module pycrtm ! in
                 real dimension(n_layers),intent(in),depend(n_layers) :: temperaturelayers
                 real dimension(n_layers),intent(in),depend(n_layers) :: humiditylayers
                 real dimension(n_layers),intent(in),depend(n_layers) :: ozoneconclayers
+                real dimension(n_layers),intent(in),depend(n_layers) :: co2conclayers
                 real dimension(n_layers),intent(in),depend(n_layers) :: aerosoleffectiveradius
                 real dimension(n_layers),intent(in),depend(n_layers) :: aerosolconcentration
                 integer intent(in) :: aerosoltype
@@ -32,7 +33,7 @@ python module pycrtm ! in
                 real dimension(nchan),intent(out),depend(nchan) :: outtb
                 real dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: outtransmission
             end subroutine wrap_forward
-            subroutine wrap_k_matrix(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_layers,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,surfacetype,surfacetemperature,windspeed10m,winddirection10m,outtb,outtransmission,temperaturejacobian,humidityjacobian,ozonejacobian) ! in :pycrtm:pycrtm.f90:pycrtm
+            subroutine wrap_k_matrix(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_layers,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,surfacetype,surfacetemperature,windspeed10m,winddirection10m,outtb,outtransmission,temperaturejacobian,humidityjacobian,ozonejacobian) ! in :pycrtm:pycrtm.f90:pycrtm
                 use crtm_module
                 character*1024 intent(in) :: coefficientpath
                 character*(*) intent(in) :: sensor_id_in
@@ -47,6 +48,7 @@ python module pycrtm ! in
                 real dimension(n_layers),intent(in),depend(n_layers) :: temperaturelayers
                 real dimension(n_layers),intent(in),depend(n_layers) :: humiditylayers
                 real dimension(n_layers),intent(in),depend(n_layers) :: ozoneconclayers
+                real dimension(n_layers),intent(in),depend(n_layers) :: co2conclayers
                 real dimension(n_layers),intent(in),depend(n_layers) :: aerosoleffectiveradius
                 real dimension(n_layers),intent(in),depend(n_layers) :: aerosolconcentration
                 integer intent(in) :: aerosoltype

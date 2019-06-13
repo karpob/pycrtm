@@ -3,6 +3,7 @@ contains
 subroutine wrap_forward( coefficientPath, sensor_id_in, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan, &
                         N_LAYERS, pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
+                        co2ConcLayers, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
                         cloudEffectiveRadius, cloudConcentration, cloudType, & 
                         surfaceType, surfaceTemperature, windSpeed10m, windDirection10m, & 
@@ -25,6 +26,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   integer, intent(in) :: nChan, N_Layers
   real, intent(in) :: pressureLevels(N_LAYERS+1)
   real, intent(in) :: pressureLayers(N_LAYERS), temperatureLayers(N_LAYERS), humidityLayers(N_LAYERS), ozoneConcLayers(N_LAYERS)
+  real, intent(in) :: co2ConcLayers(N_LAYERS)
   real, intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
   real, intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS)
   integer, intent(in) :: surfaceType, aerosolType, cloudType
@@ -58,7 +60,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
 
   ! Profile dimensions
   INTEGER, PARAMETER :: N_PROFILES  = 1
-  INTEGER, PARAMETER :: N_ABSORBERS = 2
+  INTEGER, PARAMETER :: N_ABSORBERS = 3
   INTEGER, PARAMETER :: N_CLOUDS    = 1 
   INTEGER, PARAMETER :: N_AEROSOLS  = 1
   
@@ -212,22 +214,22 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! ...Land surface characteristics
     sfc%Land_Coverage     = 0.1d0
     sfc%Land_Type         = TUNDRA_SURFACE_TYPE
-    sfc%Land_Temperature  = 272.0
-    sfc%Lai               = 0.17
+    sfc%Land_Temperature  = 272.0d0
+    sfc%Lai               = 0.17d0
     sfc%Soil_Type         = COARSE_SOIL_TYPE
     sfc%Vegetation_Type   = GROUNDCOVER_VEGETATION_TYPE
     ! ...Water surface characteristics
     sfc%Water_Coverage    = 0.5d0
     sfc%Water_Type        = SEA_WATER_TYPE
-    sfc%Water_Temperature = 275.0
+    sfc%Water_Temperature = 275.0d0
     ! ...Snow coverage characteristics
     sfc%Snow_Coverage    = 0.25d0
     sfc%Snow_Type        = FRESH_SNOW_TYPE
-    sfc%Snow_Temperature = 265.0
+    sfc%Snow_Temperature = 265.0d0
     ! ...Ice surface characteristics
     sfc%Ice_Coverage    = 0.15d0
     sfc%Ice_Type        = FRESH_ICE_TYPE
-    sfc%Ice_Temperature = 269.0
+    sfc%Ice_Temperature = 269.0d0
 
    
     ! ==========================================================================
@@ -312,6 +314,7 @@ end subroutine wrap_forward
 subroutine wrap_k_matrix( coefficientPath, sensor_id_in, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan, &
                         N_LAYERS, pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
+                        co2ConcLayers, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
                         cloudEffectiveRadius, cloudConcentration, cloudType, & 
                         surfaceType, surfaceTemperature, windSpeed10m, windDirection10m, & 
@@ -344,6 +347,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   integer, intent(in) :: nChan, N_Layers 
   real, intent(in) :: pressureLevels(N_LAYERS+1)
   real, intent(in) :: pressureLayers(N_LAYERS), temperatureLayers(N_LAYERS), humidityLayers(N_LAYERS), ozoneConcLayers(N_LAYERS)
+  real, intent(in) :: co2ConcLayers(N_LAYERS)
   real, intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
   real, intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS)
   integer, intent(in) :: surfaceType, aerosolType, cloudType
@@ -368,7 +372,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
 
   ! Profile dimensions
   INTEGER, PARAMETER :: N_PROFILES  = 1
-  INTEGER, PARAMETER :: N_ABSORBERS = 2
+  INTEGER, PARAMETER :: N_ABSORBERS = 3
   INTEGER, PARAMETER :: N_CLOUDS    = 1
   INTEGER, PARAMETER :: N_AEROSOLS  = 1
   
@@ -430,7 +434,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   err_stat = CRTM_Init( sensor_id, &
                         chinfo, &
                         File_Path=coefficientPath, &
-                        MWwaterCoeff_File = 'FASTEM5.MWwater.EmisCoeff.bin', & 
+                        !MWwaterCoeff_File = 'FASTEM5.MWwater.EmisCoeff.bin', & 
                         Quiet=.False.)
   IF ( err_stat /= SUCCESS ) THEN
     message = 'Error initializing CRTM'
@@ -530,8 +534,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     !     respective structures below was done purely to keep the step-by-step
     !     instructions in this program relatively "clean".
     ! ------------------------------------------------------------------------
-    atm(1)%Absorber_Id(1:2)    = (/ H2O_ID                 , O3_ID /)
-    atm(1)%Absorber_Units(1:2) = (/ MASS_MIXING_RATIO_UNITS, VOLUME_MIXING_RATIO_UNITS /)
+    atm(1)%Climatology         = US_STANDARD_ATMOSPHERE  
+    atm(1)%Absorber_Id(1:3)    = (/ H2O_ID                 , O3_ID, CO2_ID /)
+    atm(1)%Absorber_Units(1:3) = (/ MASS_MIXING_RATIO_UNITS, VOLUME_MIXING_RATIO_UNITS, VOLUME_MIXING_RATIO_UNITS /)
     ! ...Profile data
     atm(1)%Level_Pressure = pressureLevels
     atm(1)%Pressure = pressureLayers
@@ -545,6 +550,10 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     atm(1)%Cloud(1)%Type = cloudType
     atm(1)%Cloud(1)%Effective_Radius = cloudEffectiveRadius
     atm(1)%Cloud(1)%Water_Content = cloudConcentration
+
+    atm(1)%Absorber(:,3)     = 380.0d0
+    WHERE(atm(1)%Cloud(1)%Water_Content > 0.0d0) atm(1)%Cloud_Fraction = 0.0d0
+
     ! 6b. Geometry input
     ! ------------------
     ! All profiles are given the same value
@@ -586,22 +595,22 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! ...Land surface characteristics
     sfc%Land_Coverage     = 0.1d0
     sfc%Land_Type         = TUNDRA_SURFACE_TYPE
-    sfc%Land_Temperature  = 272.0
-    sfc%Lai               = 0.17
+    sfc%Land_Temperature  = 272.0d0
+    sfc%Lai               = 0.17d0
     sfc%Soil_Type         = COARSE_SOIL_TYPE
     sfc%Vegetation_Type   = GROUNDCOVER_VEGETATION_TYPE
     ! ...Water surface characteristics
     sfc%Water_Coverage    = 0.5d0
     sfc%Water_Type        = SEA_WATER_TYPE
-    sfc%Water_Temperature = 275.0
+    sfc%Water_Temperature = 275.0d0
     ! ...Snow coverage characteristics
     sfc%Snow_Coverage    = 0.25d0
     sfc%Snow_Type        = FRESH_SNOW_TYPE
-    sfc%Snow_Temperature = 265.0
+    sfc%Snow_Temperature = 265.0d0
     ! ...Ice surface characteristics
     sfc%Ice_Coverage    = 0.15d0
     sfc%Ice_Type        = FRESH_ICE_TYPE
-    sfc%Ice_Temperature = 269.0
+    sfc%Ice_Temperature = 269.0d0
 
     
     ! ==========================================================================
@@ -669,46 +678,46 @@ end subroutine wrap_k_matrix
     integer, intent(out) :: aerosolType, cloudType
     ! ...Profile data
     Level_Pressure = &
-    (/0.714,   0.975,   1.297,   1.687,   2.153,   2.701,   3.340,   4.077, &
-      4.920,   5.878,   6.957,   8.165,   9.512,  11.004,  12.649,  14.456, &
-     16.432,  18.585,  20.922,  23.453,  26.183,  29.121,  32.274,  35.650, &
-     39.257,  43.100,  47.188,  51.528,  56.126,  60.990,  66.125,  71.540, &
-     77.240,  83.231,  89.520,  96.114, 103.017, 110.237, 117.777, 125.646, &
-    133.846, 142.385, 151.266, 160.496, 170.078, 180.018, 190.320, 200.989, &
-    212.028, 223.441, 235.234, 247.409, 259.969, 272.919, 286.262, 300.000, &
-    314.137, 328.675, 343.618, 358.967, 374.724, 390.893, 407.474, 424.470, &
-    441.882, 459.712, 477.961, 496.630, 515.720, 535.232, 555.167, 575.525, &
-    596.306, 617.511, 639.140, 661.192, 683.667, 706.565, 729.886, 753.627, &
-    777.790, 802.371, 827.371, 852.788, 878.620, 904.866, 931.524, 958.591, &
-    986.067,1013.948,1042.232,1070.917,1100.000/)
+    (/0.714d0,   0.975d0,   1.297d0,   1.687d0,   2.153d0,   2.701d0,   3.340d0,   4.077d0, &
+      4.920d0,   5.878d0,   6.957d0,   8.165d0,   9.512d0,  11.004d0,  12.649d0,  14.456d0, &
+     16.432d0,  18.585d0,  20.922d0,  23.453d0,  26.183d0,  29.121d0,  32.274d0,  35.650d0, &
+     39.257d0,  43.100d0,  47.188d0,  51.528d0,  56.126d0,  60.990d0,  66.125d0,  71.540d0, &
+     77.240d0,  83.231d0,  89.520d0,  96.114d0, 103.017d0, 110.237d0, 117.777d0, 125.646d0, &
+    133.846d0, 142.385d0, 151.266d0, 160.496d0, 170.078d0, 180.018d0, 190.320d0, 200.989d0, &
+    212.028d0, 223.441d0, 235.234d0, 247.409d0, 259.969d0, 272.919d0, 286.262d0, 300.000d0, &
+    314.137d0, 328.675d0, 343.618d0, 358.967d0, 374.724d0, 390.893d0, 407.474d0, 424.470d0, &
+    441.882d0, 459.712d0, 477.961d0, 496.630d0, 515.720d0, 535.232d0, 555.167d0, 575.525d0, &
+    596.306d0, 617.511d0, 639.140d0, 661.192d0, 683.667d0, 706.565d0, 729.886d0, 753.627d0, &
+    777.790d0, 802.371d0, 827.371d0, 852.788d0, 878.620d0, 904.866d0, 931.524d0, 958.591d0, &
+    986.067d0,1013.948d0,1042.232d0,1070.917d0,1100.000d0/)
 
     Pressure = &
-    (/0.838,   1.129,   1.484,   1.910,   2.416,   3.009,   3.696,   4.485, &
-      5.385,   6.402,   7.545,   8.822,  10.240,  11.807,  13.532,  15.423, &
-     17.486,  19.730,  22.163,  24.793,  27.626,  30.671,  33.934,  37.425, &
-     41.148,  45.113,  49.326,  53.794,  58.524,  63.523,  68.797,  74.353, &
-     80.198,  86.338,  92.778,  99.526, 106.586, 113.965, 121.669, 129.703, &
-    138.072, 146.781, 155.836, 165.241, 175.001, 185.121, 195.606, 206.459, &
-    217.685, 229.287, 241.270, 253.637, 266.392, 279.537, 293.077, 307.014, &
-    321.351, 336.091, 351.236, 366.789, 382.751, 399.126, 415.914, 433.118, &
-    450.738, 468.777, 487.236, 506.115, 525.416, 545.139, 565.285, 585.854, &
-    606.847, 628.263, 650.104, 672.367, 695.054, 718.163, 741.693, 765.645, &
-    790.017, 814.807, 840.016, 865.640, 891.679, 918.130, 944.993, 972.264, &
-    999.942,1028.025,1056.510,1085.394/)
+    (/0.838d0,   1.129d0,   1.484d0,   1.910d0,   2.416d0,   3.009d0,   3.696d0,   4.485d0, &
+      5.385d0,   6.402d0,   7.545d0,   8.822d0,  10.240d0,  11.807d0,  13.532d0,  15.423d0, &
+     17.486d0,  19.730d0,  22.163d0,  24.793d0,  27.626d0,  30.671d0,  33.934d0,  37.425d0, &
+     41.148d0,  45.113d0,  49.326d0,  53.794d0,  58.524d0,  63.523d0,  68.797d0,  74.353d0, &
+     80.198d0,  86.338d0,  92.778d0,  99.526d0, 106.586d0, 113.965d0, 121.669d0, 129.703d0, &
+    138.072d0, 146.781d0, 155.836d0, 165.241d0, 175.001d0, 185.121d0, 195.606d0, 206.459d0, &
+    217.685d0, 229.287d0, 241.270d0, 253.637d0, 266.392d0, 279.537d0, 293.077d0, 307.014d0, &
+    321.351d0, 336.091d0, 351.236d0, 366.789d0, 382.751d0, 399.126d0, 415.914d0, 433.118d0, &
+    450.738d0, 468.777d0, 487.236d0, 506.115d0, 525.416d0, 545.139d0, 565.285d0, 585.854d0, &
+    606.847d0, 628.263d0, 650.104d0, 672.367d0, 695.054d0, 718.163d0, 741.693d0, 765.645d0, &
+    790.017d0, 814.807d0, 840.016d0, 865.640d0, 891.679d0, 918.130d0, 944.993d0, 972.264d0, &
+    999.942d0,1028.025d0,1056.510d0,1085.394d0/)
 
     Temperature = &
-    (/256.186, 252.608, 247.762, 243.314, 239.018, 235.282, 233.777, 234.909, &
-      237.889, 241.238, 243.194, 243.304, 242.977, 243.133, 242.920, 242.026, &
-      240.695, 239.379, 238.252, 236.928, 235.452, 234.561, 234.192, 233.774, &
-      233.305, 233.053, 233.103, 233.307, 233.702, 234.219, 234.959, 235.940, &
-      236.744, 237.155, 237.374, 238.244, 239.736, 240.672, 240.688, 240.318, &
-      239.888, 239.411, 238.512, 237.048, 235.388, 233.551, 231.620, 230.418, &
-      229.927, 229.511, 229.197, 228.947, 228.772, 228.649, 228.567, 228.517, &
-      228.614, 228.861, 229.376, 230.223, 231.291, 232.591, 234.013, 235.508, &
-      237.041, 238.589, 240.165, 241.781, 243.399, 244.985, 246.495, 247.918, &
-      249.073, 250.026, 251.113, 252.321, 253.550, 254.741, 256.089, 257.692, &
-      259.358, 261.010, 262.779, 264.702, 266.711, 268.863, 271.103, 272.793, &
-      273.356, 273.356, 273.356, 273.356/)
+    (/256.186d0, 252.608d0, 247.762d0, 243.314d0, 239.018d0, 235.282d0, 233.777d0, 234.909d0, &
+      237.889d0, 241.238d0, 243.194d0, 243.304d0, 242.977d0, 243.133d0, 242.920d0, 242.026d0, &
+      240.695d0, 239.379d0, 238.252d0, 236.928d0, 235.452d0, 234.561d0, 234.192d0, 233.774d0, &
+      233.305d0, 233.053d0, 233.103d0, 233.307d0, 233.702d0, 234.219d0, 234.959d0, 235.940d0, &
+      236.744d0, 237.155d0, 237.374d0, 238.244d0, 239.736d0, 240.672d0, 240.688d0, 240.318d0, &
+      239.888d0, 239.411d0, 238.512d0, 237.048d0, 235.388d0, 233.551d0, 231.620d0, 230.418d0, &
+      229.927d0, 229.511d0, 229.197d0, 228.947d0, 228.772d0, 228.649d0, 228.567d0, 228.517d0, &
+      228.614d0, 228.861d0, 229.376d0, 230.223d0, 231.291d0, 232.591d0, 234.013d0, 235.508d0, &
+      237.041d0, 238.589d0, 240.165d0, 241.781d0, 243.399d0, 244.985d0, 246.495d0, 247.918d0, &
+      249.073d0, 250.026d0, 251.113d0, 252.321d0, 253.550d0, 254.741d0, 256.089d0, 257.692d0, &
+      259.358d0, 261.010d0, 262.779d0, 264.702d0, 266.711d0, 268.863d0, 271.103d0, 272.793d0, &
+      273.356d0, 273.356d0, 273.356d0, 273.356d0/)
 
     water_vapor = &
     (/4.187E-03,4.401E-03,4.250E-03,3.688E-03,3.516E-03,3.739E-03,3.694E-03,3.449E-03, &
@@ -723,7 +732,6 @@ end subroutine wrap_k_matrix
       7.110E-01,7.552E-01,8.127E-01,8.854E-01,9.663E-01,1.050E+00,1.162E+00,1.316E+00, &
       1.494E+00,1.690E+00,1.931E+00,2.226E+00,2.574E+00,2.939E+00,3.187E+00,3.331E+00, &
       3.352E+00,3.260E+00,3.172E+00,3.087E+00/)
-
     ozone = &
     (/3.035E+00,3.943E+00,4.889E+00,5.812E+00,6.654E+00,7.308E+00,7.660E+00,7.745E+00, &
       7.696E+00,7.573E+00,7.413E+00,7.246E+00,7.097E+00,6.959E+00,6.797E+00,6.593E+00, &
@@ -737,7 +745,6 @@ end subroutine wrap_k_matrix
       6.368E-02,6.070E-02,5.778E-02,5.481E-02,5.181E-02,4.920E-02,4.700E-02,4.478E-02, &
       4.207E-02,3.771E-02,3.012E-02,1.941E-02,9.076E-03,2.980E-03,5.117E-03,1.160E-02, &
       1.428E-02,1.428E-02,1.428E-02,1.428E-02/)
-
     !AerosolType = DUST_AEROSOL
     aerosolType = 1
     aerosolEffectiveRadius = & ! microns

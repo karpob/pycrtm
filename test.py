@@ -105,6 +105,7 @@ def main(coefficientPath, sensor_id,\
         ozoneJacobian = pycrtm.wrap_k_matrix( coefficientPath, sensor_id,\
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan,\
                         p[k]['pressureLevels'], p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['humidityLayers'], p[k]['ozoneConcLayers'],\
+                        380.0*np.ones(p[k]['ozoneConcLayers'].shape),\
                         p[k]['aerosolEffectiveRadius'], p[k]['aerosolConcentration'], p[k]['aerosolType'],\
                         p[k]['cloudEffectiveRadius'], p[k]['cloudConcentration'], p[k]['cloudType'],\
                         surfaceType, surfaceTemperature, windSpeed10m, windDirection10m )
@@ -125,8 +126,8 @@ if __name__ == "__main__":
     coefficientPath = pathInfo['CRTM']['coeffs_dir']
     #sensor_id = 'atms_n20'
     sensor_id = 'cris_npp'
-    zenithAngle = float(0) #float(30.0)
-    scanAngle = float(0) #float(26.37293341421)
+    zenithAngle = float(30.0)
+    scanAngle = float(26.37293341421)
     azimuthAngle = float(0.0)
     solarAngle = float(0.0)
     nChan = int(1305)
