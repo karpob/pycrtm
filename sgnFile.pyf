@@ -8,10 +8,10 @@ python module pycrtm ! in
                 use crtm_module
                 character*(*) intent(in) :: coefficientpath
                 character*(*) intent(in) :: sensor_id_in
-                real intent(in) :: zenithangle
-                real intent(in) :: scanangle
-                real intent(in) :: azimuthangle
-                real intent(in) :: solarangle
+                real(kind=8) intent(in) :: zenithangle
+                real(kind=8) intent(in) :: scanangle
+                real(kind=8) intent(in) :: azimuthangle
+                real(kind=8) intent(in) :: solarangle
                 integer intent(in) :: nchan
                 integer, optional,intent(in),check((len(pressurelevels)-1)>=n_layers),depend(pressurelevels) :: n_layers=(len(pressurelevels)-1)
                 real dimension(n_layers + 1),intent(in) :: pressurelevels
@@ -33,50 +33,53 @@ python module pycrtm ! in
                 real dimension(nchan),intent(out),depend(nchan) :: outtb
                 real dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: outtransmission
             end subroutine wrap_forward
-            subroutine wrap_k_matrix(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_layers,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,surfacetype,surfacetemperature,windspeed10m,winddirection10m,outtb,outtransmission,temperaturejacobian,humidityjacobian,ozonejacobian) ! in :pycrtm:pycrtm.f90:pycrtm
+            subroutine wrap_k_matrix(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_layers,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,surfacetype,surfacetemperature,windspeed10m,winddirection10m,outtb,outtransmission,temperaturejacobian,humidityjacobian,ozonejacobian,emissivity) ! in :pycrtm:pycrtm.f90:pycrtm
                 use crtm_module
                 character*1024 intent(in) :: coefficientpath
                 character*(*) intent(in) :: sensor_id_in
-                real intent(in) :: zenithangle
-                real intent(in) :: scanangle
-                real intent(in) :: azimuthangle
-                real intent(in) :: solarangle
+                real(kind=8) intent(in) :: zenithangle
+                real(kind=8) intent(in) :: scanangle
+                real(kind=8) intent(in) :: azimuthangle
+                real(kind=8) intent(in) :: solarangle
                 integer intent(in) :: nchan
                 integer, optional,intent(in),check((len(pressurelevels)-1)>=n_layers),depend(pressurelevels) :: n_layers=(len(pressurelevels)-1)
-                real dimension(n_layers + 1),intent(in) :: pressurelevels
-                real dimension(n_layers),intent(in),depend(n_layers) :: pressurelayers
-                real dimension(n_layers),intent(in),depend(n_layers) :: temperaturelayers
-                real dimension(n_layers),intent(in),depend(n_layers) :: humiditylayers
-                real dimension(n_layers),intent(in),depend(n_layers) :: ozoneconclayers
-                real dimension(n_layers),intent(in),depend(n_layers) :: co2conclayers
-                real dimension(n_layers),intent(in),depend(n_layers) :: aerosoleffectiveradius
-                real dimension(n_layers),intent(in),depend(n_layers) :: aerosolconcentration
+                real(kind=8) dimension(n_layers + 1),intent(in) :: pressurelevels
+                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: pressurelayers
+                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: temperaturelayers
+                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: humiditylayers
+                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: ozoneconclayers
+                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: co2conclayers
+                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: aerosoleffectiveradius
+                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: aerosolconcentration
                 integer intent(in) :: aerosoltype
-                real dimension(n_layers),intent(in),depend(n_layers) :: cloudeffectiveradius
-                real dimension(n_layers),intent(in),depend(n_layers) :: cloudconcentration
+                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: cloudeffectiveradius
+                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: cloudconcentration
                 integer intent(in) :: cloudtype
                 integer intent(in) :: surfacetype
-                real intent(in) :: surfacetemperature
-                real intent(in) :: windspeed10m
-                real intent(in) :: winddirection10m
-                real dimension(nchan),intent(out),depend(nchan) :: outtb
-                real dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: outtransmission
-                real dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: temperaturejacobian
-                real dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: humidityjacobian
-                real dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: ozonejacobian
+                real(kind=8) intent(in) :: surfacetemperature
+                real(kind=8) intent(in) :: windspeed10m
+                real(kind=8) intent(in) :: winddirection10m
+                real(kind=8) dimension(nchan),intent(out),depend(nchan) :: outtb
+                real(kind=8) dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: outtransmission
+                real(kind=8) dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: temperaturejacobian
+                real(kind=8) dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: humidityjacobian
+                real(kind=8) dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: ozonejacobian
+                real(kind=8) dimension(nchan),intent(out),depend(nchan) :: emissivity
             end subroutine wrap_k_matrix
-            subroutine test_data_us_std(level_pressure,pressure,temperature,water_vapor,ozone,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype) ! in :pycrtm:pycrtm.f90:pycrtm
-                real dimension(93),intent(out) :: level_pressure
-                real dimension(92),intent(out) :: pressure
-                real dimension(92),intent(out) :: temperature
-                real dimension(92),intent(out) :: water_vapor
-                real dimension(92),intent(out) :: ozone
-                real dimension(92),intent(out) :: aerosoleffectiveradius
-                real dimension(92),intent(out) :: aerosolconcentration
+            subroutine test_data_us_std(level_pressure,pressure,temperature,water_vapor,ozone,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,co2) ! in :pycrtm:pycrtm.f90:pycrtm
+                use crtm_module
+                real(kind=8) dimension(93),intent(out) :: level_pressure
+                real(kind=8) dimension(92),intent(out) :: pressure
+                real(kind=8) dimension(92),intent(out) :: temperature
+                real(kind=8) dimension(92),intent(out) :: water_vapor
+                real(kind=8) dimension(92),intent(out) :: ozone
+                real(kind=8) dimension(92),intent(out) :: aerosoleffectiveradius
+                real(kind=8) dimension(92),intent(out) :: aerosolconcentration
                 integer intent(out) :: aerosoltype
-                real dimension(92),intent(out) :: cloudeffectiveradius
-                real dimension(92),intent(out) :: cloudconcentration
+                real(kind=8) dimension(92),intent(out) :: cloudeffectiveradius
+                real(kind=8) dimension(92),intent(out) :: cloudconcentration
                 integer intent(out) :: cloudtype
+                real(kind=8) dimension(92),intent(out) :: co2
             end subroutine test_data_us_std
             subroutine test_data_tropical(level_pressure,pressure,temperature,water_vapor,ozone) ! in :pycrtm:pycrtm.f90:pycrtm
                 real dimension(93),intent(out) :: level_pressure

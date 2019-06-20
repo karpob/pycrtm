@@ -22,10 +22,11 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   character(len=*), intent(in) :: sensor_id_in
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
-  real, intent(in) :: zenithAngle, scanAngle, azimuthAngle, solarAngle
+  real(kind=8), intent(in) :: zenithAngle, scanAngle, azimuthAngle, solarAngle
   integer, intent(in) :: nChan, N_Layers
   real, intent(in) :: pressureLevels(N_LAYERS+1)
-  real, intent(in) :: pressureLayers(N_LAYERS), temperatureLayers(N_LAYERS), humidityLayers(N_LAYERS), ozoneConcLayers(N_LAYERS)
+  real, intent(in) :: pressureLayers(N_LAYERS), temperatureLayers(N_LAYERS), humidityLayers(N_LAYERS)
+  real, intent(in) :: ozoneConcLayers(N_LAYERS)
   real, intent(in) :: co2ConcLayers(N_LAYERS)
   real, intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
   real, intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS)
@@ -60,7 +61,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
 
   ! Profile dimensions
   INTEGER, PARAMETER :: N_PROFILES  = 1
-  INTEGER, PARAMETER :: N_ABSORBERS = 3
+  INTEGER, PARAMETER :: N_ABSORBERS = 2
   INTEGER, PARAMETER :: N_CLOUDS    = 1 
   INTEGER, PARAMETER :: N_AEROSOLS  = 1
   
@@ -198,9 +199,9 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! All profiles are given the same value
     !  The Sensor_SCAN_ANGLE is optional.  !! BMK- Oh? this would be nice. Not sure if that's true though. Think you need it for FastEm?
     CALL CRTM_Geometry_SetValue( geo, &
-                                 Sensor_Zenith_Angle = dble(zenithAngle), &
-                                 Sensor_Scan_Angle   = dble(scanAngle),   & 
-                                 Sensor_Azimuth_Angle = dble(azimuthAngle) )
+                                 Sensor_Zenith_Angle = zenithAngle, &
+                                 Sensor_Scan_Angle   = scanAngle ) !,   & 
+                                 !Sensor_Azimuth_Angle = dble(azimuthAngle) )
     ! ==========================================================================
 
     ! surface stuff! need to put something more advanced here!
@@ -212,24 +213,24 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! 4a.1 Profile #1
     ! ---------------
     ! ...Land surface characteristics
-    sfc%Land_Coverage     = 0.1d0
+    sfc%Land_Coverage     = 0.1_fp
     sfc%Land_Type         = TUNDRA_SURFACE_TYPE
-    sfc%Land_Temperature  = 272.0d0
-    sfc%Lai               = 0.17d0
+    sfc%Land_Temperature  = 272.0_fp
+    sfc%Lai               = 0.17_fp
     sfc%Soil_Type         = COARSE_SOIL_TYPE
     sfc%Vegetation_Type   = GROUNDCOVER_VEGETATION_TYPE
     ! ...Water surface characteristics
-    sfc%Water_Coverage    = 0.5d0
+    sfc%Water_Coverage    = 0.5_fp
     sfc%Water_Type        = SEA_WATER_TYPE
-    sfc%Water_Temperature = 275.0d0
+    sfc%Water_Temperature = 275.0_fp
     ! ...Snow coverage characteristics
-    sfc%Snow_Coverage    = 0.25d0
+    sfc%Snow_Coverage    = 0.25_fp
     sfc%Snow_Type        = FRESH_SNOW_TYPE
-    sfc%Snow_Temperature = 265.0d0
+    sfc%Snow_Temperature = 265.0_fp
     ! ...Ice surface characteristics
-    sfc%Ice_Coverage    = 0.15d0
+    sfc%Ice_Coverage    = 0.15_fp
     sfc%Ice_Type        = FRESH_ICE_TYPE
-    sfc%Ice_Temperature = 269.0d0
+    sfc%Ice_Temperature = 269.0_fp
 
    
     ! ==========================================================================
@@ -319,7 +320,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
                         cloudEffectiveRadius, cloudConcentration, cloudType, & 
                         surfaceType, surfaceTemperature, windSpeed10m, windDirection10m, & 
                         outTb, outTransmission, & 
-                        temperatureJacobian, humidityJacobian, ozoneJacobian )      
+                        temperatureJacobian, humidityJacobian, ozoneJacobian, emissivity )      
 
   ! ============================================================================
   ! STEP 1. **** ENVIRONMENT SETUP FOR CRTM USAGE ****
@@ -343,18 +344,19 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   character(len=*), intent(in) :: sensor_id_in
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
-  real, intent(in) :: zenithAngle, scanAngle, azimuthAngle, solarAngle
+  real(kind=8), intent(in) :: zenithAngle, scanAngle, azimuthAngle, solarAngle
   integer, intent(in) :: nChan, N_Layers 
-  real, intent(in) :: pressureLevels(N_LAYERS+1)
-  real, intent(in) :: pressureLayers(N_LAYERS), temperatureLayers(N_LAYERS), humidityLayers(N_LAYERS), ozoneConcLayers(N_LAYERS)
-  real, intent(in) :: co2ConcLayers(N_LAYERS)
-  real, intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
-  real, intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS)
+  real(kind=8), intent(in) :: pressureLevels(N_LAYERS+1)
+  real(kind=8), intent(in) :: pressureLayers(N_LAYERS), temperatureLayers(N_LAYERS), humidityLayers(N_LAYERS)
+  real(kind=8), intent(in) :: ozoneConcLayers(N_LAYERS)
+  real(kind=8), intent(in) :: co2ConcLayers(N_LAYERS)
+  real(kind=8), intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
+  real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS)
   integer, intent(in) :: surfaceType, aerosolType, cloudType
-  real, intent(in) :: surfaceTemperature, windSpeed10m, windDirection10m
-  real, intent(out) :: outTb(nChan)
-  real, intent(out) :: outTransmission(nChan,N_LAYERS), temperatureJacobian(nChan,N_LAYERS)
-  real, intent(out) ::  humidityJacobian(nChan,N_LAYERS), ozoneJacobian(nChan, N_LAYERS)
+  real(kind=8), intent(in) :: surfaceTemperature, windSpeed10m, windDirection10m
+  real(kind=8), intent(out) :: outTb(nChan), emissivity(nChan)
+  real(kind=8), intent(out) :: outTransmission(nChan,N_LAYERS), temperatureJacobian(nChan,N_LAYERS)
+  real(kind=8), intent(out) ::  humidityJacobian(nChan,N_LAYERS), ozoneJacobian(nChan, N_LAYERS)
   INTEGER, PARAMETER :: TUNDRA_SURFACE_TYPE         = 10  ! NPOESS Land surface type for IR/VIS Land SfcOptics
   INTEGER, PARAMETER :: SCRUB_SURFACE_TYPE          =  7  ! NPOESS Land surface type for IR/VIS Land SfcOptics
   INTEGER, PARAMETER :: COARSE_SOIL_TYPE            =  1  ! Soil type                for MW land SfcOptics
@@ -372,7 +374,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
 
   ! Profile dimensions
   INTEGER, PARAMETER :: N_PROFILES  = 1
-  INTEGER, PARAMETER :: N_ABSORBERS = 3
+  INTEGER, PARAMETER :: N_ABSORBERS = 2
   INTEGER, PARAMETER :: N_CLOUDS    = 1
   INTEGER, PARAMETER :: N_AEROSOLS  = 1
   
@@ -551,17 +553,16 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     atm(1)%Cloud(1)%Effective_Radius = cloudEffectiveRadius
     atm(1)%Cloud(1)%Water_Content = cloudConcentration
 
-    atm(1)%Absorber(:,3)     = 380.0d0
-    WHERE(atm(1)%Cloud(1)%Water_Content > 0.0d0) atm(1)%Cloud_Fraction = 0.0d0
-
+    atm(1)%Absorber(:,3)     = co2ConcLayers
+    WHERE(atm(1)%Cloud(1)%Water_Content > 0.0_fp) atm(1)%Cloud_Fraction = 0.0_fp
     ! 6b. Geometry input
     ! ------------------
     ! All profiles are given the same value
     !  The Sensor_SCAN_ANGLE is optional.  !! BMK- Oh? this would be nice. Not sure if that's true though.
     CALL CRTM_Geometry_SetValue( geo, &
-                                 Sensor_Zenith_Angle = dble(zenithAngle), &
-                                 Sensor_Scan_Angle   = dble(scanAngle),   &
-                                 Sensor_Azimuth_Angle = dble(azimuthAngle) )
+                                 Sensor_Zenith_Angle = 30.0_fp, &
+                                 Sensor_Scan_Angle   = 26.37293341421_fp)!,   &
+    !                             Sensor_Azimuth_Angle = dble(azimuthAngle) )
     ! ==========================================================================
 
 
@@ -584,33 +585,33 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! ==========================================================================
     ! surface stuff! need to put something more advanced here!
     !Sfc%Water_Coverage = 1
-    Sfc%Water_Temperature = surfaceTemperature
-    Sfc%Wind_Direction = windDirection10m
-    Sfc%Wind_Speed = windSpeed10m
-    Sfc%Salinity = 35.0    
+    !Sfc%Water_Temperature = surfaceTemperature
+    !Sfc%Wind_Direction = windDirection10m
+    !Sfc%Wind_Speed = windSpeed10m
+    !Sfc%Salinity = 35.0    
 
 
     ! 4a.1 Profile #1
     ! ---------------
     ! ...Land surface characteristics
-    sfc%Land_Coverage     = 0.1d0
+    sfc%Land_Coverage     = 0.1_fp
     sfc%Land_Type         = TUNDRA_SURFACE_TYPE
-    sfc%Land_Temperature  = 272.0d0
-    sfc%Lai               = 0.17d0
+    sfc%Land_Temperature  = 272.0_fp
+    sfc%Lai               = 0.17_fp
     sfc%Soil_Type         = COARSE_SOIL_TYPE
     sfc%Vegetation_Type   = GROUNDCOVER_VEGETATION_TYPE
     ! ...Water surface characteristics
-    sfc%Water_Coverage    = 0.5d0
+    sfc%Water_Coverage    = 0.5_fp
     sfc%Water_Type        = SEA_WATER_TYPE
-    sfc%Water_Temperature = 275.0d0
+    sfc%Water_Temperature = 275.0_fp
     ! ...Snow coverage characteristics
-    sfc%Snow_Coverage    = 0.25d0
+    sfc%Snow_Coverage    = 0.25_fp
     sfc%Snow_Type        = FRESH_SNOW_TYPE
-    sfc%Snow_Temperature = 265.0d0
+    sfc%Snow_Temperature = 265.0_fp
     ! ...Ice surface characteristics
-    sfc%Ice_Coverage    = 0.15d0
+    sfc%Ice_Coverage    = 0.15_fp
     sfc%Ice_Type        = FRESH_ICE_TYPE
-    sfc%Ice_Temperature = 269.0d0
+    sfc%Ice_Temperature = 269.0_fp
 
     
     ! ==========================================================================
@@ -650,6 +651,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
         outTransmission(l,1:n_layers) = rts(l,1)%Layer_Optical_Depth
     enddo
     outTb = rts(:,1)%Brightness_Temperature 
+    emissivity = rts(:,1)%Surface_Emissivity
     CALL CRTM_Atmosphere_Destroy(atm)
     DEALLOCATE(atm_k, STAT = alloc_stat)
     DEALLOCATE(rts_K, sfc_k, STAT = alloc_stat)
@@ -671,130 +673,136 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
 end subroutine wrap_k_matrix
   SUBROUTINE test_data_us_std(Level_Pressure, Pressure, Temperature, water_vapor, ozone, &
                               aerosolEffectiveRadius, aerosolConcentration, aerosolType, &
-                              cloudEffectiveRadius, cloudConcentration, cloudType )
-    real, intent(out), dimension(93) :: Level_Pressure 
-    real, intent(out), dimension(92) :: Pressure, Temperature, water_vapor, ozone, aerosolEffectiveRadius, &
-                                        aerosolConcentration,  cloudEffectiveRadius, cloudConcentration
+                              cloudEffectiveRadius, cloudConcentration, cloudType, co2 )
+    
+    USE CRTM_Module
+    IMPLICIT NONE 
+    real(kind=8), intent(out), dimension(93) :: Level_Pressure 
+    real(kind=8), intent(out), dimension(92) :: Pressure, Temperature, water_vapor, ozone, aerosolEffectiveRadius, &
+                                        aerosolConcentration,  cloudEffectiveRadius, cloudConcentration, co2
     integer, intent(out) :: aerosolType, cloudType
+    
     ! ...Profile data
     Level_Pressure = &
-    (/0.714d0,   0.975d0,   1.297d0,   1.687d0,   2.153d0,   2.701d0,   3.340d0,   4.077d0, &
-      4.920d0,   5.878d0,   6.957d0,   8.165d0,   9.512d0,  11.004d0,  12.649d0,  14.456d0, &
-     16.432d0,  18.585d0,  20.922d0,  23.453d0,  26.183d0,  29.121d0,  32.274d0,  35.650d0, &
-     39.257d0,  43.100d0,  47.188d0,  51.528d0,  56.126d0,  60.990d0,  66.125d0,  71.540d0, &
-     77.240d0,  83.231d0,  89.520d0,  96.114d0, 103.017d0, 110.237d0, 117.777d0, 125.646d0, &
-    133.846d0, 142.385d0, 151.266d0, 160.496d0, 170.078d0, 180.018d0, 190.320d0, 200.989d0, &
-    212.028d0, 223.441d0, 235.234d0, 247.409d0, 259.969d0, 272.919d0, 286.262d0, 300.000d0, &
-    314.137d0, 328.675d0, 343.618d0, 358.967d0, 374.724d0, 390.893d0, 407.474d0, 424.470d0, &
-    441.882d0, 459.712d0, 477.961d0, 496.630d0, 515.720d0, 535.232d0, 555.167d0, 575.525d0, &
-    596.306d0, 617.511d0, 639.140d0, 661.192d0, 683.667d0, 706.565d0, 729.886d0, 753.627d0, &
-    777.790d0, 802.371d0, 827.371d0, 852.788d0, 878.620d0, 904.866d0, 931.524d0, 958.591d0, &
-    986.067d0,1013.948d0,1042.232d0,1070.917d0,1100.000d0/)
+    (/0.714_fp,   0.975_fp,   1.297_fp,   1.687_fp,   2.153_fp,   2.701_fp,   3.340_fp,   4.077_fp, &
+      4.920_fp,   5.878_fp,   6.957_fp,   8.165_fp,   9.512_fp,  11.004_fp,  12.649_fp,  14.456_fp, &
+     16.432_fp,  18.585_fp,  20.922_fp,  23.453_fp,  26.183_fp,  29.121_fp,  32.274_fp,  35.650_fp, &
+     39.257_fp,  43.100_fp,  47.188_fp,  51.528_fp,  56.126_fp,  60.990_fp,  66.125_fp,  71.540_fp, &
+     77.240_fp,  83.231_fp,  89.520_fp,  96.114_fp, 103.017_fp, 110.237_fp, 117.777_fp, 125.646_fp, &
+    133.846_fp, 142.385_fp, 151.266_fp, 160.496_fp, 170.078_fp, 180.018_fp, 190.320_fp, 200.989_fp, &
+    212.028_fp, 223.441_fp, 235.234_fp, 247.409_fp, 259.969_fp, 272.919_fp, 286.262_fp, 300.000_fp, &
+    314.137_fp, 328.675_fp, 343.618_fp, 358.967_fp, 374.724_fp, 390.893_fp, 407.474_fp, 424.470_fp, &
+    441.882_fp, 459.712_fp, 477.961_fp, 496.630_fp, 515.720_fp, 535.232_fp, 555.167_fp, 575.525_fp, &
+    596.306_fp, 617.511_fp, 639.140_fp, 661.192_fp, 683.667_fp, 706.565_fp, 729.886_fp, 753.627_fp, &
+    777.790_fp, 802.371_fp, 827.371_fp, 852.788_fp, 878.620_fp, 904.866_fp, 931.524_fp, 958.591_fp, &
+    986.067_fp,1013.948_fp,1042.232_fp,1070.917_fp,1100.000_fp/)
 
     Pressure = &
-    (/0.838d0,   1.129d0,   1.484d0,   1.910d0,   2.416d0,   3.009d0,   3.696d0,   4.485d0, &
-      5.385d0,   6.402d0,   7.545d0,   8.822d0,  10.240d0,  11.807d0,  13.532d0,  15.423d0, &
-     17.486d0,  19.730d0,  22.163d0,  24.793d0,  27.626d0,  30.671d0,  33.934d0,  37.425d0, &
-     41.148d0,  45.113d0,  49.326d0,  53.794d0,  58.524d0,  63.523d0,  68.797d0,  74.353d0, &
-     80.198d0,  86.338d0,  92.778d0,  99.526d0, 106.586d0, 113.965d0, 121.669d0, 129.703d0, &
-    138.072d0, 146.781d0, 155.836d0, 165.241d0, 175.001d0, 185.121d0, 195.606d0, 206.459d0, &
-    217.685d0, 229.287d0, 241.270d0, 253.637d0, 266.392d0, 279.537d0, 293.077d0, 307.014d0, &
-    321.351d0, 336.091d0, 351.236d0, 366.789d0, 382.751d0, 399.126d0, 415.914d0, 433.118d0, &
-    450.738d0, 468.777d0, 487.236d0, 506.115d0, 525.416d0, 545.139d0, 565.285d0, 585.854d0, &
-    606.847d0, 628.263d0, 650.104d0, 672.367d0, 695.054d0, 718.163d0, 741.693d0, 765.645d0, &
-    790.017d0, 814.807d0, 840.016d0, 865.640d0, 891.679d0, 918.130d0, 944.993d0, 972.264d0, &
-    999.942d0,1028.025d0,1056.510d0,1085.394d0/)
+    (/0.838_fp,   1.129_fp,   1.484_fp,   1.910_fp,   2.416_fp,   3.009_fp,   3.696_fp,   4.485_fp, &
+      5.385_fp,   6.402_fp,   7.545_fp,   8.822_fp,  10.240_fp,  11.807_fp,  13.532_fp,  15.423_fp, &
+     17.486_fp,  19.730_fp,  22.163_fp,  24.793_fp,  27.626_fp,  30.671_fp,  33.934_fp,  37.425_fp, &
+     41.148_fp,  45.113_fp,  49.326_fp,  53.794_fp,  58.524_fp,  63.523_fp,  68.797_fp,  74.353_fp, &
+     80.198_fp,  86.338_fp,  92.778_fp,  99.526_fp, 106.586_fp, 113.965_fp, 121.669_fp, 129.703_fp, &
+    138.072_fp, 146.781_fp, 155.836_fp, 165.241_fp, 175.001_fp, 185.121_fp, 195.606_fp, 206.459_fp, &
+    217.685_fp, 229.287_fp, 241.270_fp, 253.637_fp, 266.392_fp, 279.537_fp, 293.077_fp, 307.014_fp, &
+    321.351_fp, 336.091_fp, 351.236_fp, 366.789_fp, 382.751_fp, 399.126_fp, 415.914_fp, 433.118_fp, &
+    450.738_fp, 468.777_fp, 487.236_fp, 506.115_fp, 525.416_fp, 545.139_fp, 565.285_fp, 585.854_fp, &
+    606.847_fp, 628.263_fp, 650.104_fp, 672.367_fp, 695.054_fp, 718.163_fp, 741.693_fp, 765.645_fp, &
+    790.017_fp, 814.807_fp, 840.016_fp, 865.640_fp, 891.679_fp, 918.130_fp, 944.993_fp, 972.264_fp, &
+    999.942_fp,1028.025_fp,1056.510_fp,1085.394_fp/)
 
     Temperature = &
-    (/256.186d0, 252.608d0, 247.762d0, 243.314d0, 239.018d0, 235.282d0, 233.777d0, 234.909d0, &
-      237.889d0, 241.238d0, 243.194d0, 243.304d0, 242.977d0, 243.133d0, 242.920d0, 242.026d0, &
-      240.695d0, 239.379d0, 238.252d0, 236.928d0, 235.452d0, 234.561d0, 234.192d0, 233.774d0, &
-      233.305d0, 233.053d0, 233.103d0, 233.307d0, 233.702d0, 234.219d0, 234.959d0, 235.940d0, &
-      236.744d0, 237.155d0, 237.374d0, 238.244d0, 239.736d0, 240.672d0, 240.688d0, 240.318d0, &
-      239.888d0, 239.411d0, 238.512d0, 237.048d0, 235.388d0, 233.551d0, 231.620d0, 230.418d0, &
-      229.927d0, 229.511d0, 229.197d0, 228.947d0, 228.772d0, 228.649d0, 228.567d0, 228.517d0, &
-      228.614d0, 228.861d0, 229.376d0, 230.223d0, 231.291d0, 232.591d0, 234.013d0, 235.508d0, &
-      237.041d0, 238.589d0, 240.165d0, 241.781d0, 243.399d0, 244.985d0, 246.495d0, 247.918d0, &
-      249.073d0, 250.026d0, 251.113d0, 252.321d0, 253.550d0, 254.741d0, 256.089d0, 257.692d0, &
-      259.358d0, 261.010d0, 262.779d0, 264.702d0, 266.711d0, 268.863d0, 271.103d0, 272.793d0, &
-      273.356d0, 273.356d0, 273.356d0, 273.356d0/)
+    (/256.186_fp, 252.608_fp, 247.762_fp, 243.314_fp, 239.018_fp, 235.282_fp, 233.777_fp, 234.909_fp, &
+      237.889_fp, 241.238_fp, 243.194_fp, 243.304_fp, 242.977_fp, 243.133_fp, 242.920_fp, 242.026_fp, &
+      240.695_fp, 239.379_fp, 238.252_fp, 236.928_fp, 235.452_fp, 234.561_fp, 234.192_fp, 233.774_fp, &
+      233.305_fp, 233.053_fp, 233.103_fp, 233.307_fp, 233.702_fp, 234.219_fp, 234.959_fp, 235.940_fp, &
+      236.744_fp, 237.155_fp, 237.374_fp, 238.244_fp, 239.736_fp, 240.672_fp, 240.688_fp, 240.318_fp, &
+      239.888_fp, 239.411_fp, 238.512_fp, 237.048_fp, 235.388_fp, 233.551_fp, 231.620_fp, 230.418_fp, &
+      229.927_fp, 229.511_fp, 229.197_fp, 228.947_fp, 228.772_fp, 228.649_fp, 228.567_fp, 228.517_fp, &
+      228.614_fp, 228.861_fp, 229.376_fp, 230.223_fp, 231.291_fp, 232.591_fp, 234.013_fp, 235.508_fp, &
+      237.041_fp, 238.589_fp, 240.165_fp, 241.781_fp, 243.399_fp, 244.985_fp, 246.495_fp, 247.918_fp, &
+      249.073_fp, 250.026_fp, 251.113_fp, 252.321_fp, 253.550_fp, 254.741_fp, 256.089_fp, 257.692_fp, &
+      259.358_fp, 261.010_fp, 262.779_fp, 264.702_fp, 266.711_fp, 268.863_fp, 271.103_fp, 272.793_fp, &
+      273.356_fp, 273.356_fp, 273.356_fp, 273.356_fp/)
 
     water_vapor = &
-    (/4.187E-03,4.401E-03,4.250E-03,3.688E-03,3.516E-03,3.739E-03,3.694E-03,3.449E-03, &
-      3.228E-03,3.212E-03,3.245E-03,3.067E-03,2.886E-03,2.796E-03,2.704E-03,2.617E-03, &
-      2.568E-03,2.536E-03,2.506E-03,2.468E-03,2.427E-03,2.438E-03,2.493E-03,2.543E-03, &
-      2.586E-03,2.632E-03,2.681E-03,2.703E-03,2.636E-03,2.512E-03,2.453E-03,2.463E-03, &
-      2.480E-03,2.499E-03,2.526E-03,2.881E-03,3.547E-03,4.023E-03,4.188E-03,4.223E-03, &
-      4.252E-03,4.275E-03,4.105E-03,3.675E-03,3.196E-03,2.753E-03,2.338E-03,2.347E-03, &
-      2.768E-03,3.299E-03,3.988E-03,4.531E-03,4.625E-03,4.488E-03,4.493E-03,4.614E-03, &
-      7.523E-03,1.329E-02,2.468E-02,4.302E-02,6.688E-02,9.692E-02,1.318E-01,1.714E-01, &
-      2.149E-01,2.622E-01,3.145E-01,3.726E-01,4.351E-01,5.002E-01,5.719E-01,6.507E-01, &
-      7.110E-01,7.552E-01,8.127E-01,8.854E-01,9.663E-01,1.050E+00,1.162E+00,1.316E+00, &
-      1.494E+00,1.690E+00,1.931E+00,2.226E+00,2.574E+00,2.939E+00,3.187E+00,3.331E+00, &
-      3.352E+00,3.260E+00,3.172E+00,3.087E+00/)
+    (/4.187E-03_fp,4.401E-03_fp,4.250E-03_fp,3.688E-03_fp,3.516E-03_fp,3.739E-03_fp,3.694E-03_fp,3.449E-03_fp, &
+      3.228E-03_fp,3.212E-03_fp,3.245E-03_fp,3.067E-03_fp,2.886E-03_fp,2.796E-03_fp,2.704E-03_fp,2.617E-03_fp, &
+      2.568E-03_fp,2.536E-03_fp,2.506E-03_fp,2.468E-03_fp,2.427E-03_fp,2.438E-03_fp,2.493E-03_fp,2.543E-03_fp, &
+      2.586E-03_fp,2.632E-03_fp,2.681E-03_fp,2.703E-03_fp,2.636E-03_fp,2.512E-03_fp,2.453E-03_fp,2.463E-03_fp, &
+      2.480E-03_fp,2.499E-03_fp,2.526E-03_fp,2.881E-03_fp,3.547E-03_fp,4.023E-03_fp,4.188E-03_fp,4.223E-03_fp, &
+      4.252E-03_fp,4.275E-03_fp,4.105E-03_fp,3.675E-03_fp,3.196E-03_fp,2.753E-03_fp,2.338E-03_fp,2.347E-03_fp, &
+      2.768E-03_fp,3.299E-03_fp,3.988E-03_fp,4.531E-03_fp,4.625E-03_fp,4.488E-03_fp,4.493E-03_fp,4.614E-03_fp, &
+      7.523E-03_fp,1.329E-02_fp,2.468E-02_fp,4.302E-02_fp,6.688E-02_fp,9.692E-02_fp,1.318E-01_fp,1.714E-01_fp, &
+      2.149E-01_fp,2.622E-01_fp,3.145E-01_fp,3.726E-01_fp,4.351E-01_fp,5.002E-01_fp,5.719E-01_fp,6.507E-01_fp, &
+      7.110E-01_fp,7.552E-01_fp,8.127E-01_fp,8.854E-01_fp,9.663E-01_fp,1.050E+00_fp,1.162E+00_fp,1.316E+00_fp, &
+      1.494E+00_fp,1.690E+00_fp,1.931E+00_fp,2.226E+00_fp,2.574E+00_fp,2.939E+00_fp,3.187E+00_fp,3.331E+00_fp, &
+      3.352E+00_fp,3.260E+00_fp,3.172E+00_fp,3.087E+00_fp/)
     ozone = &
-    (/3.035E+00,3.943E+00,4.889E+00,5.812E+00,6.654E+00,7.308E+00,7.660E+00,7.745E+00, &
-      7.696E+00,7.573E+00,7.413E+00,7.246E+00,7.097E+00,6.959E+00,6.797E+00,6.593E+00, &
-      6.359E+00,6.110E+00,5.860E+00,5.573E+00,5.253E+00,4.937E+00,4.625E+00,4.308E+00, &
-      3.986E+00,3.642E+00,3.261E+00,2.874E+00,2.486E+00,2.102E+00,1.755E+00,1.450E+00, &
-      1.208E+00,1.087E+00,1.030E+00,1.005E+00,1.010E+00,1.028E+00,1.068E+00,1.109E+00, &
-      1.108E+00,1.071E+00,9.928E-01,8.595E-01,7.155E-01,5.778E-01,4.452E-01,3.372E-01, &
-      2.532E-01,1.833E-01,1.328E-01,9.394E-02,6.803E-02,5.152E-02,4.569E-02,4.855E-02, &
-      5.461E-02,6.398E-02,7.205E-02,7.839E-02,8.256E-02,8.401E-02,8.412E-02,8.353E-02, &
-      8.269E-02,8.196E-02,8.103E-02,7.963E-02,7.741E-02,7.425E-02,7.067E-02,6.702E-02, &
-      6.368E-02,6.070E-02,5.778E-02,5.481E-02,5.181E-02,4.920E-02,4.700E-02,4.478E-02, &
-      4.207E-02,3.771E-02,3.012E-02,1.941E-02,9.076E-03,2.980E-03,5.117E-03,1.160E-02, &
-      1.428E-02,1.428E-02,1.428E-02,1.428E-02/)
+    (/3.035E+00_fp,3.943E+00_fp,4.889E+00_fp,5.812E+00_fp,6.654E+00_fp,7.308E+00_fp,7.660E+00_fp,7.745E+00_fp, &
+      7.696E+00_fp,7.573E+00_fp,7.413E+00_fp,7.246E+00_fp,7.097E+00_fp,6.959E+00_fp,6.797E+00_fp,6.593E+00_fp, &
+      6.359E+00_fp,6.110E+00_fp,5.860E+00_fp,5.573E+00_fp,5.253E+00_fp,4.937E+00_fp,4.625E+00_fp,4.308E+00_fp, &
+      3.986E+00_fp,3.642E+00_fp,3.261E+00_fp,2.874E+00_fp,2.486E+00_fp,2.102E+00_fp,1.755E+00_fp,1.450E+00_fp, &
+      1.208E+00_fp,1.087E+00_fp,1.030E+00_fp,1.005E+00_fp,1.010E+00_fp,1.028E+00_fp,1.068E+00_fp,1.109E+00_fp, &
+      1.108E+00_fp,1.071E+00_fp,9.928E-01_fp,8.595E-01_fp,7.155E-01_fp,5.778E-01_fp,4.452E-01_fp,3.372E-01_fp, &
+      2.532E-01_fp,1.833E-01_fp,1.328E-01_fp,9.394E-02_fp,6.803E-02_fp,5.152E-02_fp,4.569E-02_fp,4.855E-02_fp, &
+      5.461E-02_fp,6.398E-02_fp,7.205E-02_fp,7.839E-02_fp,8.256E-02_fp,8.401E-02_fp,8.412E-02_fp,8.353E-02_fp, &
+      8.269E-02_fp,8.196E-02_fp,8.103E-02_fp,7.963E-02_fp,7.741E-02_fp,7.425E-02_fp,7.067E-02_fp,6.702E-02_fp, &
+      6.368E-02_fp,6.070E-02_fp,5.778E-02_fp,5.481E-02_fp,5.181E-02_fp,4.920E-02_fp,4.700E-02_fp,4.478E-02_fp, &
+      4.207E-02_fp,3.771E-02_fp,3.012E-02_fp,1.941E-02_fp,9.076E-03_fp,2.980E-03_fp,5.117E-03_fp,1.160E-02_fp, &
+      1.428E-02_fp,1.428E-02_fp,1.428E-02_fp,1.428E-02_fp/)
     !AerosolType = DUST_AEROSOL
     aerosolType = 1
     aerosolEffectiveRadius = & ! microns
-      (/0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 5.305110E-16, &
-        7.340409E-16, 1.037097E-15, 1.496791E-15, 2.207471E-15, 3.327732E-15, &
-        5.128933E-15, 8.083748E-15, 1.303055E-14, 2.148368E-14, 3.622890E-14, &
-        6.248544E-14, 1.102117E-13, 1.987557E-13, 3.663884E-13, 6.901587E-13, &
-        1.327896E-12, 2.608405E-12, 5.228012E-12, 1.068482E-11, 2.225098E-11, &
-        4.717675E-11, 1.017447E-10, 2.229819E-10, 4.960579E-10, 1.118899E-09, &
-        2.555617E-09, 5.902789E-09, 1.376717E-08, 3.237321E-08, 7.662427E-08, &
-        1.822344E-07, 4.346896E-07, 1.037940E-06, 2.475858E-06, 5.887266E-06, &
-        1.392410E-05, 3.267943E-05, 7.592447E-05, 1.741777E-04, 3.935216E-04, &
-        8.732308E-04, 1.897808E-03, 4.027868E-03, 8.323272E-03, 1.669418E-02, &
-        3.239702E-02, 6.063055E-02, 1.090596E-01, 1.878990E-01, 3.089856E-01, &
-        4.832092E-01, 7.159947E-01, 1.001436E+00, 1.317052E+00, 1.622354E+00, &
-        1.864304E+00, 1.990457E+00, 1.966354E+00, 1.789883E+00, 1.494849E+00, &
-        1.140542E+00, 7.915451E-01, 4.974823E-01, 2.818937E-01, 1.433668E-01, &
-        6.514795E-02, 2.633057E-02, 9.421763E-03, 2.971053E-03, 8.218245E-04/)
+      (/0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 5.305110E-16_fp, &
+        7.340409E-16_fp, 1.037097E-15_fp, 1.496791E-15_fp, 2.207471E-15_fp, 3.327732E-15_fp, &
+        5.128933E-15_fp, 8.083748E-15_fp, 1.303055E-14_fp, 2.148368E-14_fp, 3.622890E-14_fp, &
+        6.248544E-14_fp, 1.102117E-13_fp, 1.987557E-13_fp, 3.663884E-13_fp, 6.901587E-13_fp, &
+        1.327896E-12_fp, 2.608405E-12_fp, 5.228012E-12_fp, 1.068482E-11_fp, 2.225098E-11_fp, &
+        4.717675E-11_fp, 1.017447E-10_fp, 2.229819E-10_fp, 4.960579E-10_fp, 1.118899E-09_fp, &
+        2.555617E-09_fp, 5.902789E-09_fp, 1.376717E-08_fp, 3.237321E-08_fp, 7.662427E-08_fp, &
+        1.822344E-07_fp, 4.346896E-07_fp, 1.037940E-06_fp, 2.475858E-06_fp, 5.887266E-06_fp, &
+        1.392410E-05_fp, 3.267943E-05_fp, 7.592447E-05_fp, 1.741777E-04_fp, 3.935216E-04_fp, &
+        8.732308E-04_fp, 1.897808E-03_fp, 4.027868E-03_fp, 8.323272E-03_fp, 1.669418E-02_fp, &
+        3.239702E-02_fp, 6.063055E-02_fp, 1.090596E-01_fp, 1.878990E-01_fp, 3.089856E-01_fp, &
+        4.832092E-01_fp, 7.159947E-01_fp, 1.001436E+00_fp, 1.317052E+00_fp, 1.622354E+00_fp, &
+        1.864304E+00_fp, 1.990457E+00_fp, 1.966354E+00_fp, 1.789883E+00_fp, 1.494849E+00_fp, &
+        1.140542E+00_fp, 7.915451E-01_fp, 4.974823E-01_fp, 2.818937E-01_fp, 1.433668E-01_fp, &
+        6.514795E-02_fp, 2.633057E-02_fp, 9.421763E-03_fp, 2.971053E-03_fp, 8.218245E-04_fp/)
+ 
     aerosolConcentration = & ! kg/m^2
-      (/0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, 0.000000E+00, &
-        0.000000E+00, 0.000000E+00, 0.000000E+00, 2.458105E-18, 1.983430E-16, &
-        1.191432E-14, 5.276880E-13, 1.710270E-11, 4.035105E-10, 6.911389E-09, &
-        8.594215E-08, 7.781797E-07, 5.162773E-06, 2.534018E-05, 9.325154E-05, &
-        2.617738E-04, 5.727150E-04, 1.002153E-03, 1.446048E-03, 1.782757E-03, &
-        1.955759E-03, 1.999206E-03, 1.994698E-03, 1.913109E-03, 1.656122E-03, &
-        1.206328E-03, 6.847261E-04, 2.785695E-04, 7.418821E-05, 1.172680E-05, &
-        9.900895E-07, 3.987399E-08, 6.786932E-10, 4.291151E-12, 8.785440E-15/)
+        (/0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, &
+        0.000000E+00_fp, 0.000000E+00_fp, 0.000000E+00_fp, 2.458105E-18_fp, 1.983430E-16_fp, &
+        1.191432E-14_fp, 5.276880E-13_fp, 1.710270E-11_fp, 4.035105E-10_fp, 6.911389E-09_fp, &
+        8.594215E-08_fp, 7.781797E-07_fp, 5.162773E-06_fp, 2.534018E-05_fp, 9.325154E-05_fp, &
+        2.617738E-04_fp, 5.727150E-04_fp, 1.002153E-03_fp, 1.446048E-03_fp, 1.782757E-03_fp, &
+        1.955759E-03_fp, 1.999206E-03_fp, 1.994698E-03_fp, 1.913109E-03_fp, 1.656122E-03_fp, &
+        1.206328E-03_fp, 6.847261E-04_fp, 2.785695E-04_fp, 7.418821E-05_fp, 1.172680E-05_fp, &
+        9.900895E-07_fp, 3.987399E-08_fp, 6.786932E-10_fp, 4.291151E-12_fp, 8.785440E-15_fp/)
+
 
         cloudType = 1
-        cloudEffectiveRadius(:)=0.0d0
-        cloudConcentration(:)=0.0d0
+        cloudEffectiveRadius(:)=0.0_fp
+        cloudConcentration(:)=0.0_fp
 
-        cloudEffectiveRadius(75:79) = 20.0d0 ! microns
-        cloudConcentration(75:79)    = 5.0d0  ! kg/m^2
-
+        cloudEffectiveRadius(75:79) = 20.0_fp ! microns
+        cloudConcentration(75:79)    = 5.0_fp  ! kg/m^2
+        co2(:) = 380.0_fp
  
   end subroutine test_data_us_std
 
