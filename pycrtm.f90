@@ -560,9 +560,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! All profiles are given the same value
     !  The Sensor_SCAN_ANGLE is optional.  !! BMK- Oh? this would be nice. Not sure if that's true though.
     CALL CRTM_Geometry_SetValue( geo, &
-                                 Sensor_Zenith_Angle = 30.0_fp, &
-                                 Sensor_Scan_Angle   = 26.37293341421_fp)!,   &
-    !                             Sensor_Azimuth_Angle = dble(azimuthAngle) )
+                                 Sensor_Zenith_Angle = zenithAngle, &
+                                 Sensor_Scan_Angle   = scanAngle )!,   &
+                                 !Sensor_Azimuth_Angle = azimuthAngle )
     ! ==========================================================================
 
 
