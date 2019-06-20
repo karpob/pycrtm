@@ -561,8 +561,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     !  The Sensor_SCAN_ANGLE is optional.  !! BMK- Oh? this would be nice. Not sure if that's true though.
     CALL CRTM_Geometry_SetValue( geo, &
                                  Sensor_Zenith_Angle = zenithAngle, &
-                                 Sensor_Scan_Angle   = scanAngle )!,   &
-                                 !Sensor_Azimuth_Angle = azimuthAngle )
+                                 Sensor_Scan_Angle   = scanAngle ,  &
+                                 Sensor_Azimuth_Angle = azimuthAngle )
     ! ==========================================================================
 
 
