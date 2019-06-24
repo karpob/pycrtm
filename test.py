@@ -111,14 +111,17 @@ def main(coefficientPath, sensor_id,\
     chan_list = [577, 607, 626, 650, 667]
     for k in list(p.keys()):
         N_LAYERS = p[k]['pressureLayers'].shape[0]
-        """  
-        Tb,transmission = pycrtm.wrap_forward( coefficientPath, sensor_id,\
-                              zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan, \
-                              p[k]['pressureLevels'], p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['humidityLayers'], p[k]['ozoneConcLayers'],\
-                              p[k]['aerosolEffectiveRadius'], p[k]['aerosolConcentration'], p[k]['aerosolType'],\
-                              surfaceType, surfaceTemperature, windSpeed10m, windDirection10m )
-        print(Tb,transmission)
-        """
+        Tb1, Transmission1,\
+        emissivity1 = pycrtm.wrap_forward( coefficientPath, sensor_id,\
+                        zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan,\
+                        p[k]['pressureLevels'], p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['humidityLayers'], p[k]['ozoneConcLayers'],\
+                        p[k]['co2ConcLayers'],\
+                        p[k]['aerosolEffectiveRadius'], p[k]['aerosolConcentration'], p[k]['aerosolType'],\
+                        p[k]['cloudEffectiveRadius'], p[k]['cloudConcentration'], p[k]['cloudType'],\
+                        surfaceTemperatures, surfaceFractions, LAI, windSpeed10m, windDirection10m, n_absorbers )
+
+
+
         Tb, Transmission,\
         temperatureJacobian,\
         humidityJacobian,\
@@ -160,6 +163,7 @@ if __name__ == "__main__":
     surfaceType = int(1)
     windSpeed10m = float(0.0)
     windDirection10m = float(0.0)
+    surfaceTemperature = 0
     # assuming this is zenith? probably need Az too?
     main(coefficientPath, sensor_id,\
         zenithAngle, scanAngle, azimuthAngle, solarAngle,\

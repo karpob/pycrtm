@@ -6,8 +6,9 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
                         co2ConcLayers, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
                         cloudEffectiveRadius, cloudConcentration, cloudType, & 
-                        surfaceType, surfaceTemperature, windSpeed10m, windDirection10m, & 
-                        outTb, outTransmission )      
+                        surfaceTemperatures, surfaceFractions, LAI, windSpeed10m, windDirection10m, n_absorbers, & 
+                        outTb, outTransmission, & 
+                        emissivity )      
 
   ! ============================================================================
   ! STEP 1. **** ENVIRONMENT SETUP FOR CRTM USAGE ****
@@ -24,16 +25,16 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   ! on the default Re (earth radius) and h (satellite height)
   real(kind=8), intent(in) :: zenithAngle, scanAngle, azimuthAngle, solarAngle
   integer, intent(in) :: nChan, N_Layers
-  real, intent(in) :: pressureLevels(N_LAYERS+1)
-  real, intent(in) :: pressureLayers(N_LAYERS), temperatureLayers(N_LAYERS), humidityLayers(N_LAYERS)
-  real, intent(in) :: ozoneConcLayers(N_LAYERS)
-  real, intent(in) :: co2ConcLayers(N_LAYERS)
-  real, intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
-  real, intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS)
-  integer, intent(in) :: surfaceType, aerosolType, cloudType
-  real, intent(in) :: surfaceTemperature, windSpeed10m, windDirection10m
-  real, intent(out) :: outTb(nChan)
-  real, intent(out) :: outTransmission(nChan,N_LAYERS)
+  real(kind=8), intent(in) :: pressureLevels(N_LAYERS+1)
+  real(kind=8), intent(in) :: pressureLayers(N_LAYERS), temperatureLayers(N_LAYERS), humidityLayers(N_LAYERS)
+  real(kind=8), intent(in) :: ozoneConcLayers(N_LAYERS)
+  real(kind=8), intent(in) :: co2ConcLayers(N_LAYERS)
+  real(kind=8), intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
+  real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS)
+  integer, intent(in) :: aerosolType, cloudType, n_absorbers
+  real(kind=8), intent(in) :: surfaceTemperatures(4), surfaceFractions(4), LAI, windSpeed10m, windDirection10m
+  real(kind=8), intent(out) :: outTb(nChan), emissivity(nChan)
+  real(kind=8), intent(out) :: outTransmission(nChan,N_LAYERS)
   character(len=256), dimension(1) :: sensor_id
   INTEGER, PARAMETER :: TUNDRA_SURFACE_TYPE         = 10  ! NPOESS Land surface type for IR/VIS Land SfcOptics
   INTEGER, PARAMETER :: SCRUB_SURFACE_TYPE          =  7  ! NPOESS Land surface type for IR/VIS Land SfcOptics
@@ -61,7 +62,6 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
 
   ! Profile dimensions
   INTEGER, PARAMETER :: N_PROFILES  = 1
-  INTEGER, PARAMETER :: N_ABSORBERS = 2
   INTEGER, PARAMETER :: N_CLOUDS    = 1 
   INTEGER, PARAMETER :: N_AEROSOLS  = 1
   
@@ -200,37 +200,36 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     !  The Sensor_SCAN_ANGLE is optional.  !! BMK- Oh? this would be nice. Not sure if that's true though. Think you need it for FastEm?
     CALL CRTM_Geometry_SetValue( geo, &
                                  Sensor_Zenith_Angle = zenithAngle, &
-                                 Sensor_Scan_Angle   = scanAngle ) !,   & 
-                                 !Sensor_Azimuth_Angle = dble(azimuthAngle) )
+                                 Sensor_Scan_Angle   = scanAngle,   & 
+                                 Sensor_Azimuth_Angle = azimuthAngle )
     ! ==========================================================================
-
-    ! surface stuff! need to put something more advanced here!
-    !Sfc%Water_Coverage = 1
-    Sfc%Water_Temperature = surfaceTemperature
-    Sfc%Wind_Direction = windDirection10m
-    Sfc%Wind_Speed = windSpeed10m
-    Sfc%Salinity = 35.0 
     ! 4a.1 Profile #1
     ! ---------------
     ! ...Land surface characteristics
-    sfc%Land_Coverage     = 0.1_fp
+    sfc%Land_Coverage     = surfaceFractions(1)
     sfc%Land_Type         = TUNDRA_SURFACE_TYPE
-    sfc%Land_Temperature  = 272.0_fp
-    sfc%Lai               = 0.17_fp
+    sfc%Land_Temperature  = surfaceTemperatures(1)
+    sfc%Lai               = LAI
     sfc%Soil_Type         = COARSE_SOIL_TYPE
     sfc%Vegetation_Type   = GROUNDCOVER_VEGETATION_TYPE
     ! ...Water surface characteristics
-    sfc%Water_Coverage    = 0.5_fp
-    sfc%Water_Type        = SEA_WATER_TYPE
-    sfc%Water_Temperature = 275.0_fp
+    sfc%Water_Coverage    = surfaceFractions(2)
+    !sfc%Water_Type        = SEA_WATER_TYPE
+    sfc%Water_Temperature = surfaceTemperatures(2)
+    Sfc%Wind_Direction = windDirection10m
+    Sfc%Wind_Speed = windSpeed10m
+    Sfc%Salinity = 35.0    
+
+
+
     ! ...Snow coverage characteristics
-    sfc%Snow_Coverage    = 0.25_fp
+    sfc%Snow_Coverage    = surfaceFractions(3)
     sfc%Snow_Type        = FRESH_SNOW_TYPE
-    sfc%Snow_Temperature = 265.0_fp
+    sfc%Snow_Temperature = surfaceTemperatures(3)
     ! ...Ice surface characteristics
-    sfc%Ice_Coverage    = 0.15_fp
+    sfc%Ice_Coverage    = surfaceFractions(4)
     sfc%Ice_Type        = FRESH_ICE_TYPE
-    sfc%Ice_Temperature = 269.0_fp
+    sfc%Ice_Temperature = surfaceTemperatures(4)
 
    
     ! ==========================================================================
@@ -277,7 +276,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
      do l=1,nChan
         outTransmission(l,1:n_layers) = rts(l,1)%Layer_Optical_Depth
     enddo
-    print *, 'Emissivity Crtm',rts(:,1)%Surface_Emissivity 
+    emissivity = rts(:,1)%Surface_Emissivity 
     outTb = rts(:,1)%Brightness_Temperature 
     
     ! ==========================================================================
