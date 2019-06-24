@@ -70,18 +70,18 @@ def main(coefficientPath, sensor_id,\
     p = {}
     p['US_Std'] ={}
     #p['Trop'] = {} 
-    p['US_Std']['pressureLevels'],\
-    p['US_Std']['pressureLayers'],\
-    p['US_Std']['temperatureLayers'],\
-    p['US_Std']['humidityLayers'],\
-    p['US_Std']['ozoneConcLayers'],\
-    p['US_Std']['aerosolEffectiveRadius'],\
-    p['US_Std']['aerosolConcentration'],\
-    p['US_Std']['aerosolType'],\
-    p['US_Std']['cloudEffectiveRadius'],\
-    p['US_Std']['cloudConcentration'],\
-    p['US_Std']['cloudType'], p['US_Std']['co2ConcLayers'] = pycrtm.test_data_us_std()
-    """
+    #p['US_Std']['pressureLevels'],\
+    #p['US_Std']['pressureLayers'],\
+    #p['US_Std']['temperatureLayers'],\
+    #p['US_Std']['humidityLayers'],\
+    #p['US_Std']['ozoneConcLayers'],\
+    #p['US_Std']['aerosolEffectiveRadius'],\
+    #p['US_Std']['aerosolConcentration'],\
+    #p['US_Std']['aerosolType'],\
+    #p['US_Std']['cloudEffectiveRadius'],\
+    #p['US_Std']['cloudConcentration'],\
+    #p['US_Std']['cloudType'], p['US_Std']['co2ConcLayers'] = pycrtm.test_data_us_std()
+    
     with open('Temperature_CRTM1.bin') as f:
         p['US_Std']['temperatureLayers'] = np.fromfile(f,dtype='<f8')
     with open('aerosolConcentration_CRTM1.bin') as f:
@@ -94,36 +94,16 @@ def main(coefficientPath, sensor_id,\
         p['US_Std']['co2ConcLayers'] = np.fromfile(f,dtype='<f8')
     with open('ozone_CRTM1.bin') as f:
         p['US_Std']['ozoneConcLayers'] = np.fromfile(f,dtype='<f8')
-    #with open('pressureLevels_CRTM1.bin') as f:
-    #    p['US_Std']['pressureLevels'] = np.fromfile(f,dtype='<f8')
-    p['US_Std']['pressureLevels'] =np.asarray([ 0.714,   0.975,   1.297,   1.687,   2.153,   2.701,   3.340,   4.077,\
-      4.920,   5.878,   6.957,   8.165,   9.512,  11.004,  12.649,  14.456,\
-     16.432,  18.585,  20.922,  23.453,  26.183,  29.121,  32.274,  35.650,\
-     39.257,  43.100,  47.188,  51.528,  56.126,  60.990,  66.125,  71.540,\
-     77.240,  83.231,  89.520,  96.114, 103.017, 110.237, 117.777, 125.646,\
-    133.846, 142.385, 151.266, 160.496, 170.078, 180.018, 190.320, 200.989,\
-    212.028, 223.441, 235.234, 247.409, 259.969, 272.919, 286.262, 300.000,\
-    314.137, 328.675, 343.618, 358.967, 374.724, 390.893, 407.474, 424.470,\
-    441.882, 459.712, 477.961, 496.630, 515.720, 535.232, 555.167, 575.525,\
-    596.306, 617.511, 639.140, 661.192, 683.667, 706.565, 729.886, 753.627,\
-    777.790, 802.371, 827.371, 852.788, 878.620, 904.866, 931.524, 958.591,\
-    986.067,1013.948,1042.232,1070.917,1100.000])
-
+    with open('pressureLevels_CRTM1.bin') as f:
+        p['US_Std']['pressureLevels'] = np.fromfile(f,dtype='<f8')
     with open('pressure_CRTM1.bin') as f:
         p['US_Std']['pressureLayers'] = np.fromfile(f,dtype='<f8')
     with open('waterContent_CRTM1.bin') as f:
         p['US_Std']['cloudConcentration'] = np.fromfile(f,dtype='<f8')
     with open('waterVapor_CRTM1.bin') as f:
         p['US_Std']['humidityLayers'] = np.fromfile(f,dtype='<f8')
-    print('weeee',p['US_Std']['pressureLevels'])    
     p['US_Std']['aerosolType'] = 1 #Dust.
     p['US_Std']['cloudType'] = 1 # Water ( I think ) 
-    #p['Trop']['pressureLevels'],\
-    #p['Trop']['pressureLayers'],\
-    #p['Trop']['temperatureLayers'],\
-    #p['Trop']['humidityLayers'],\
-    #p['Trop']['ozoneConcLayers'] = pycrtm.test_data_tropical()
-    """
     
     chan_list = [577, 607, 626, 650, 667]
     for k in list(p.keys()):
