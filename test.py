@@ -104,7 +104,10 @@ def main(coefficientPath, sensor_id,\
         p['US_Std']['humidityLayers'] = np.fromfile(f,dtype='<f8')
     p['US_Std']['aerosolType'] = 1 #Dust.
     p['US_Std']['cloudType'] = 1 # Water ( I think ) 
-    
+    surfaceTemperatures = np.asarray([272.0, 275.0, 265.0, 269.0])
+    surfaceFractions = np.asarray([0.1, 0.5, 0.25, 0.15]) 
+    n_absorbers = 2
+    LAI = 0.17
     chan_list = [577, 607, 626, 650, 667]
     for k in list(p.keys()):
         N_LAYERS = p[k]['pressureLayers'].shape[0]
@@ -125,7 +128,7 @@ def main(coefficientPath, sensor_id,\
                         p[k]['co2ConcLayers'],\
                         p[k]['aerosolEffectiveRadius'], p[k]['aerosolConcentration'], p[k]['aerosolType'],\
                         p[k]['cloudEffectiveRadius'], p[k]['cloudConcentration'], p[k]['cloudType'],\
-                        surfaceType, surfaceTemperature, windSpeed10m, windDirection10m )
+                        surfaceTemperatures, surfaceFractions, LAI, windSpeed10m, windDirection10m, n_absorbers )
 
         h5 = h5py.File('cris_wavenumbers.h5','r')
         wavenumbers = np.asarray(h5['wavenumbers'])
@@ -155,7 +158,6 @@ if __name__ == "__main__":
     solarAngle = float(0.0)
     nChan = int(1305)
     surfaceType = int(1)
-    surfaceTemperature = float(263.0) #float(293.15)
     windSpeed10m = float(0.0)
     windDirection10m = float(0.0)
     # assuming this is zenith? probably need Az too?
