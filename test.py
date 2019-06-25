@@ -133,6 +133,8 @@ def main(coefficientPath, sensor_id,\
         p['US_Std']['cloudConcentration'] = np.fromfile(f,dtype='<f8')
     with open('waterVapor_CRTM2.bin') as f:
         p['US_Std']['humidityLayers'] = np.fromfile(f,dtype='<f8')
+    p['US_Std']['cloudFraction'] = np.zeros( p['US_Std']['cloudConcentration'].shape)
+    p['US_Std']['cloudFraction'][np.where(p['US_Std']['cloudConcentration']> 0.0)] = 0.1426
 
     p['US_Std']['aerosolType'] = 2 # 1 Dust., 2 Sea salt
     p['US_Std']['cloudType'] = 3 # 1 Water ( I think ) 3, rain

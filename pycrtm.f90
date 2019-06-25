@@ -5,7 +5,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
                         N_LAYERS, pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
                         co2ConcLayers, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
-                        cloudEffectiveRadius, cloudConcentration, cloudType, climatology, & 
+                        cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology, & 
                         surfaceTemperatures, surfaceFractions, LAI, windSpeed10m, windDirection10m, n_absorbers, & 
                         landType, soilType, vegType, waterType, snowType, iceType, &  
                         outTb, outTransmission, & 
@@ -31,23 +31,13 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   real(kind=8), intent(in) :: ozoneConcLayers(N_LAYERS)
   real(kind=8), intent(in) :: co2ConcLayers(N_LAYERS)
   real(kind=8), intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
-  real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS)
+  real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS), cloudFraction(N_LAYERS)
   integer, intent(in) :: aerosolType, cloudType, n_absorbers, climatology
   real(kind=8), intent(in) :: surfaceTemperatures(4), surfaceFractions(4), LAI, windSpeed10m, windDirection10m
   integer, intent(in) ::  landType, soilType, vegType, waterType, snowType, iceType 
   real(kind=8), intent(out) :: outTb(nChan), emissivity(nChan)
   real(kind=8), intent(out) :: outTransmission(nChan,N_LAYERS)
   character(len=256), dimension(1) :: sensor_id
-  INTEGER, PARAMETER :: TUNDRA_SURFACE_TYPE         = 10  ! NPOESS Land surface type for IR/VIS Land SfcOptics
-  INTEGER, PARAMETER :: SCRUB_SURFACE_TYPE          =  7  ! NPOESS Land surface type for IR/VIS Land SfcOptics
-  INTEGER, PARAMETER :: COARSE_SOIL_TYPE            =  1  ! Soil type                for MW land SfcOptics
-  INTEGER, PARAMETER :: GROUNDCOVER_VEGETATION_TYPE =  7  ! Vegetation type          for MW Land SfcOptics
-  INTEGER, PARAMETER :: BARE_SOIL_VEGETATION_TYPE   = 11  ! Vegetation type          for MW Land SfcOptics
-  INTEGER, PARAMETER :: SEA_WATER_TYPE              =  1  ! Water type               for all SfcOptics
-  INTEGER, PARAMETER :: FRESH_SNOW_TYPE             =  2  ! NPOESS Snow type         for IR/VIS SfcOptics
-  INTEGER, PARAMETER :: FRESH_ICE_TYPE              =  1  ! NPOESS Ice type          for IR/VIS SfcOptics
-
-
 
   ! --------------------------
   ! Some non-CRTM-y Parameters
@@ -197,9 +187,8 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     atm(1)%Cloud(1)%Type = cloudType
     atm(1)%Cloud(1)%Effective_Radius = cloudEffectiveRadius
     atm(1)%Cloud(1)%Water_Content = cloudConcentration
-
-
-    WHERE(atm(1)%Cloud(1)%Water_Content > 0.0_fp) atm(1)%Cloud_Fraction = 0.1426_fp
+    atm(1)%Absorber(:,3)     = co2ConcLayers
+    atm(1)%Cloud_Fraction = cloudFraction
 
     ! 6b. Geometry input
     ! ------------------
@@ -323,7 +312,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
                         N_LAYERS, pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
                         co2ConcLayers, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
-                        cloudEffectiveRadius, cloudConcentration, cloudType, climatology, & 
+                        cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology, & 
                         surfaceTemperatures, surfaceFractions, LAI, windSpeed10m, windDirection10m, n_absorbers, & 
                         landType, soilType, vegType, waterType, snowType, iceType, &  
                         outTb, outTransmission, & 
@@ -358,7 +347,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   real(kind=8), intent(in) :: ozoneConcLayers(N_LAYERS)
   real(kind=8), intent(in) :: co2ConcLayers(N_LAYERS)
   real(kind=8), intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
-  real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS)
+  real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS), cloudFraction(N_LAYERS)
   integer, intent(in) :: aerosolType, cloudType, n_absorbers, climatology
   real(kind=8), intent(in) :: surfaceTemperatures(4), surfaceFractions(4), LAI, windSpeed10m, windDirection10m
   integer, intent(in) :: landType, soilType, vegType, waterType, snowType, iceType 
@@ -559,9 +548,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     atm(1)%Cloud(1)%Type = cloudType
     atm(1)%Cloud(1)%Effective_Radius = cloudEffectiveRadius
     atm(1)%Cloud(1)%Water_Content = cloudConcentration
+    atm(1)%Cloud(1)%Cloud_Fraction = cloudFraction
 
     atm(1)%Absorber(:,3)     = co2ConcLayers
-    WHERE(atm(1)%Cloud(1)%Water_Content > 0.0_fp) atm(1)%Cloud_Fraction = 0.1426_fp
     ! 6b. Geometry input
     ! ------------------
     ! All profiles are given the same value
