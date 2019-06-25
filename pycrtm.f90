@@ -197,6 +197,10 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     atm(1)%Cloud(1)%Type = cloudType
     atm(1)%Cloud(1)%Effective_Radius = cloudEffectiveRadius
     atm(1)%Cloud(1)%Water_Content = cloudConcentration
+
+
+    WHERE(atm(1)%Cloud(1)%Water_Content > 0.0_fp) atm(1)%Cloud_Fraction = 0.1426_fp
+
     ! 6b. Geometry input
     ! ------------------
     ! All profiles are given the same value
@@ -557,7 +561,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     atm(1)%Cloud(1)%Water_Content = cloudConcentration
 
     atm(1)%Absorber(:,3)     = co2ConcLayers
-    WHERE(atm(1)%Cloud(1)%Water_Content > 0.0_fp) atm(1)%Cloud_Fraction = 0.0_fp
+    WHERE(atm(1)%Cloud(1)%Water_Content > 0.0_fp) atm(1)%Cloud_Fraction = 0.1426_fp
     ! 6b. Geometry input
     ! ------------------
     ! All profiles are given the same value

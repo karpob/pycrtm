@@ -198,13 +198,13 @@ def main(coefficientPath, sensor_id,\
         with open('bt.bin') as f:
             dataTb = np.fromfile(f, dtype='<f8' )
         plt.figure()
-        plt.plot(wavenumbers,Tb1-dataTb)
+        plt.plot(wavenumbers,Tb-dataTb)
         plt.savefig('spectrum.png')
 
         with open('emissivity.bin') as f:
             emissivitySaved = np.fromfile(f, dtype='<f8' )
         plt.figure()
-        plt.plot(wavenumbers,emissivity1-emissivitySaved)
+        plt.plot(wavenumbers,emissivity-emissivitySaved)
         plt.savefig('emissivity.png') 
 if __name__ == "__main__":
     pathInfo = configparser.ConfigParser()
