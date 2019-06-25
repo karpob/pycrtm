@@ -5,8 +5,9 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
                         N_LAYERS, pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
                         co2ConcLayers, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
-                        cloudEffectiveRadius, cloudConcentration, cloudType, & 
+                        cloudEffectiveRadius, cloudConcentration, cloudType, climatology, & 
                         surfaceTemperatures, surfaceFractions, LAI, windSpeed10m, windDirection10m, n_absorbers, & 
+                        landType, soilType, vegType, waterType, snowType, iceType, &  
                         outTb, outTransmission, & 
                         emissivity )      
 
@@ -31,8 +32,9 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   real(kind=8), intent(in) :: co2ConcLayers(N_LAYERS)
   real(kind=8), intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
   real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS)
-  integer, intent(in) :: aerosolType, cloudType, n_absorbers
+  integer, intent(in) :: aerosolType, cloudType, n_absorbers, climatology
   real(kind=8), intent(in) :: surfaceTemperatures(4), surfaceFractions(4), LAI, windSpeed10m, windDirection10m
+  integer, intent(in) ::  landType, soilType, vegType, waterType, snowType, iceType 
   real(kind=8), intent(out) :: outTb(nChan), emissivity(nChan)
   real(kind=8), intent(out) :: outTransmission(nChan,N_LAYERS)
   character(len=256), dimension(1) :: sensor_id
@@ -181,6 +183,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     atm(1)%Absorber_Id(1:2)    = (/ H2O_ID                 , O3_ID /)
     atm(1)%Absorber_Units(1:2) = (/ MASS_MIXING_RATIO_UNITS, VOLUME_MIXING_RATIO_UNITS /)
     ! ...Profile data
+    atm(1)%Climatology = climatology
     atm(1)%Level_Pressure = pressureLevels
     atm(1)%Pressure = pressureLayers
     atm(1)%Temperature = temperatureLayers
@@ -207,14 +210,14 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! ---------------
     ! ...Land surface characteristics
     sfc%Land_Coverage     = surfaceFractions(1)
-    sfc%Land_Type         = TUNDRA_SURFACE_TYPE
+    sfc%Land_Type         = landType !TUNDRA_SURFACE_TYPE
     sfc%Land_Temperature  = surfaceTemperatures(1)
     sfc%Lai               = LAI
-    sfc%Soil_Type         = COARSE_SOIL_TYPE
-    sfc%Vegetation_Type   = GROUNDCOVER_VEGETATION_TYPE
+    sfc%Soil_Type         = soilType !COARSE_SOIL_TYPE
+    sfc%Vegetation_Type   = vegType !GROUNDCOVER_VEGETATION_TYPE
     ! ...Water surface characteristics
     sfc%Water_Coverage    = surfaceFractions(2)
-    !sfc%Water_Type        = SEA_WATER_TYPE
+    sfc%Water_Type        = waterType !SEA_WATER_TYPE
     sfc%Water_Temperature = surfaceTemperatures(2)
     Sfc%Wind_Direction = windDirection10m
     Sfc%Wind_Speed = windSpeed10m
@@ -224,11 +227,11 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
 
     ! ...Snow coverage characteristics
     sfc%Snow_Coverage    = surfaceFractions(3)
-    sfc%Snow_Type        = FRESH_SNOW_TYPE
+    sfc%Snow_Type        = snowType !FRESH_SNOW_TYPE
     sfc%Snow_Temperature = surfaceTemperatures(3)
     ! ...Ice surface characteristics
     sfc%Ice_Coverage    = surfaceFractions(4)
-    sfc%Ice_Type        = FRESH_ICE_TYPE
+    sfc%Ice_Type        = iceType !FRESH_ICE_TYPE
     sfc%Ice_Temperature = surfaceTemperatures(4)
 
    
@@ -316,8 +319,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
                         N_LAYERS, pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
                         co2ConcLayers, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
-                        cloudEffectiveRadius, cloudConcentration, cloudType, & 
+                        cloudEffectiveRadius, cloudConcentration, cloudType, climatology, & 
                         surfaceTemperatures, surfaceFractions, LAI, windSpeed10m, windDirection10m, n_absorbers, & 
+                        landType, soilType, vegType, waterType, snowType, iceType, &  
                         outTb, outTransmission, & 
                         temperatureJacobian, humidityJacobian, ozoneJacobian, emissivity )      
 
@@ -351,8 +355,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   real(kind=8), intent(in) :: co2ConcLayers(N_LAYERS)
   real(kind=8), intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
   real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS)
-  integer, intent(in) :: aerosolType, cloudType, n_absorbers
+  integer, intent(in) :: aerosolType, cloudType, n_absorbers, climatology
   real(kind=8), intent(in) :: surfaceTemperatures(4), surfaceFractions(4), LAI, windSpeed10m, windDirection10m
+  integer, intent(in) :: landType, soilType, vegType, waterType, snowType, iceType 
   real(kind=8), intent(out) :: outTb(nChan), emissivity(nChan)
   real(kind=8), intent(out) :: outTransmission(nChan,N_LAYERS), temperatureJacobian(nChan,N_LAYERS)
   real(kind=8), intent(out) ::  humidityJacobian(nChan,N_LAYERS), ozoneJacobian(nChan, N_LAYERS)
@@ -534,7 +539,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     !     respective structures below was done purely to keep the step-by-step
     !     instructions in this program relatively "clean".
     ! ------------------------------------------------------------------------
-    atm(1)%Climatology         = US_STANDARD_ATMOSPHERE  
+    atm(1)%Climatology         = climatology  
     atm(1)%Absorber_Id(1:3)    = (/ H2O_ID                 , O3_ID, CO2_ID /)
     atm(1)%Absorber_Units(1:3) = (/ MASS_MIXING_RATIO_UNITS, VOLUME_MIXING_RATIO_UNITS, VOLUME_MIXING_RATIO_UNITS /)
     ! ...Profile data
@@ -586,14 +591,14 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! ---------------
     ! ...Land surface characteristics
     sfc%Land_Coverage     = surfaceFractions(1)
-    sfc%Land_Type         = TUNDRA_SURFACE_TYPE
+    sfc%Land_Type         = landType !TUNDRA_SURFACE_TYPE
     sfc%Land_Temperature  = surfaceTemperatures(1)
     sfc%Lai               = LAI
-    sfc%Soil_Type         = COARSE_SOIL_TYPE
-    sfc%Vegetation_Type   = GROUNDCOVER_VEGETATION_TYPE
+    sfc%Soil_Type         = soilType !COARSE_SOIL_TYPE
+    sfc%Vegetation_Type   = vegType !GROUNDCOVER_VEGETATION_TYPE
     ! ...Water surface characteristics
     sfc%Water_Coverage    = surfaceFractions(2)
-    !sfc%Water_Type        = SEA_WATER_TYPE
+    sfc%Water_Type        = waterType !SEA_WATER_TYPE
     sfc%Water_Temperature = surfaceTemperatures(2)
     Sfc%Wind_Direction = windDirection10m
     Sfc%Wind_Speed = windSpeed10m
@@ -603,11 +608,11 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
 
     ! ...Snow coverage characteristics
     sfc%Snow_Coverage    = surfaceFractions(3)
-    sfc%Snow_Type        = FRESH_SNOW_TYPE
+    sfc%Snow_Type        = snowType !FRESH_SNOW_TYPE
     sfc%Snow_Temperature = surfaceTemperatures(3)
     ! ...Ice surface characteristics
     sfc%Ice_Coverage    = surfaceFractions(4)
-    sfc%Ice_Type        = FRESH_ICE_TYPE
+    sfc%Ice_Type        = iceType !FRESH_ICE_TYPE
     sfc%Ice_Temperature = surfaceTemperatures(4)
 
     
