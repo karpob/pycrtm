@@ -212,9 +212,9 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     sfc%Water_Coverage    = surfaceFractions(2)
     sfc%Water_Type        = waterType !SEA_WATER_TYPE
     sfc%Water_Temperature = surfaceTemperatures(2)
-    Sfc%Wind_Direction = windDirection10m
-    Sfc%Wind_Speed = windSpeed10m
-    Sfc%Salinity = 35.0    
+    !Sfc%Wind_Direction = windDirection10m
+    !Sfc%Wind_Speed = windSpeed10m
+    !Sfc%Salinity = 0.0_fp   
 
 
 
@@ -548,8 +548,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     atm(1)%Cloud(1)%Type = cloudType
     atm(1)%Cloud(1)%Effective_Radius = cloudEffectiveRadius
     atm(1)%Cloud(1)%Water_Content = cloudConcentration
-    atm(1)%Cloud(1)%Cloud_Fraction = cloudFraction
-
+    atm(1)%Cloud_Fraction = cloudFraction
     atm(1)%Absorber(:,3)     = co2ConcLayers
     ! 6b. Geometry input
     ! ------------------
@@ -593,9 +592,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     sfc%Water_Coverage    = surfaceFractions(2)
     sfc%Water_Type        = waterType !SEA_WATER_TYPE
     sfc%Water_Temperature = surfaceTemperatures(2)
-    Sfc%Wind_Direction = windDirection10m
-    Sfc%Wind_Speed = windSpeed10m
-    Sfc%Salinity = 35.0    
+    !Sfc%Wind_Direction = windDirection10m
+    !Sfc%Wind_Speed = windSpeed10m
+    !Sfc%Salinity = 0.0_fp   
 
 
 

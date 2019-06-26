@@ -9,27 +9,6 @@ import matplotlib.cm as mplcm
 from cycler import cycler 
 from matplotlib import pyplot as plt
 
-"""
-  INTEGER, PARAMETER :: TUNDRA_SURFACE_TYPE         = 10  ! NPOESS Land surface type for IR/VIS Land SfcOptics
-  INTEGER, PARAMETER :: SCRUB_SURFACE_TYPE          =  7  ! NPOESS Land surface type for IR/VIS Land SfcOptics
-  INTEGER, PARAMETER :: COARSE_SOIL_TYPE            =  1  ! Soil type                for MW land SfcOptics
-  INTEGER, PARAMETER :: GROUNDCOVER_VEGETATION_TYPE =  7  ! Vegetation type          for MW Land SfcOptics
-  INTEGER, PARAMETER :: BARE_SOIL_VEGETATION_TYPE   = 11  ! Vegetation type          for MW Land SfcOptics
-  INTEGER, PARAMETER :: SEA_WATER_TYPE              =  1  ! Water type               for all SfcOptics
-  INTEGER, PARAMETER :: FRESH_SNOW_TYPE             =  2  ! NPOESS Snow type         for IR/VIS SfcOptics
-  INTEGER, PARAMETER :: FRESH_ICE_TYPE              =  1  ! NPOESS Ice type          for IR/VIS SfcOptics
-
-
-
-  INTEGER, PARAMETER :: INVALID_MODEL          = 0
-  INTEGER, PARAMETER :: TROPICAL               = 1
-  INTEGER, PARAMETER :: MIDLATITUDE_SUMMER     = 2
-  INTEGER, PARAMETER :: MIDLATITUDE_WINTER     = 3
-  INTEGER, PARAMETER :: SUBARCTIC_SUMMER       = 4
-  INTEGER, PARAMETER :: SUBARCTIC_WINTER       = 5
-  INTEGER, PARAMETER :: US_STANDARD_ATMOSPHERE = 6
-
-"""
 def plotJacobians(chan_list, p, t, q, jacobians, instrument, wavenumbers, ofWhat):
     matplotlib.rc('xtick', labelsize=10) 
     plt.figure()
@@ -89,9 +68,9 @@ def plotJacobians(chan_list, p, t, q, jacobians, instrument, wavenumbers, ofWhat
 def main(coefficientPath, sensor_id,\
         zenithAngle, scanAngle, azimuthAngle, solarAngle,\
         nChan, surfaceType, surfaceTemperature, windSpeed10m, windDirection10m):
+    """    
     p = {}
     p['US_Std'] ={}
-    """    
     with open('Temperature_CRTM1.bin') as f:
         p['US_Std']['temperatureLayers'] = np.fromfile(f,dtype='<f8')
     with open('aerosolConcentration_CRTM1.bin') as f:
@@ -112,7 +91,6 @@ def main(coefficientPath, sensor_id,\
         p['US_Std']['cloudConcentration'] = np.fromfile(f,dtype='<f8')
     with open('waterVapor_CRTM1.bin') as f:
         p['US_Std']['humidityLayers'] = np.fromfile(f,dtype='<f8')
-    """
     with open('Temperature_CRTM2.bin') as f:
         p['US_Std']['temperatureLayers'] = np.fromfile(f,dtype='<f8')
     with open('aerosolConcentration_CRTM2.bin') as f:
@@ -134,19 +112,20 @@ def main(coefficientPath, sensor_id,\
     with open('waterVapor_CRTM2.bin') as f:
         p['US_Std']['humidityLayers'] = np.fromfile(f,dtype='<f8')
     p['US_Std']['cloudFraction'] = np.zeros( p['US_Std']['cloudConcentration'].shape)
-    p['US_Std']['cloudFraction'][np.where(p['US_Std']['cloudConcentration']> 0.0)] = 0.1426
-
-    p['US_Std']['aerosolType'] = 2 # 1 Dust., 2 Sea salt
-    p['US_Std']['cloudType'] = 3 # 1 Water ( I think ) 3, rain
+    #p['US_Std']['cloudFraction'][np.where(p['US_Std']['cloudConcentration']> 0.0)] = 0.1426
+    p['US_Std']['cloudFraction'][np.where(p['US_Std']['cloudConcentration']> 0.0)] = 0.0
+    
+    p['US_Std']['aerosolType'] = 1 # 1 Dust., 2 Sea salt
+    p['US_Std']['cloudType'] = 1 # 1 Water ( I think ) 3, rain
     # Land, water, snow, ice 
-    #surfaceTemperatures = np.asarray([272.0, 275.0, 265.0, 269.0])
-    surfaceTemperatures = np.asarray([318.0, 0.0, 0.0, 0.0])
-    #surfaceFractions = np.asarray([0.1, 0.5, 0.25, 0.15]) 
-    surfaceFractions = np.asarray([1.0, 0.0, 0.0, 0.0]) 
+    surfaceTemperatures = np.asarray([272.0, 275.0, 265.0, 269.0])
+    #surfaceTemperatures = np.asarray([318.0, 0.0, 0.0, 0.0])
+    surfaceFractions = np.asarray([0.1, 0.5, 0.25, 0.15]) 
+    #surfaceFractions = np.asarray([1.0, 0.0, 0.0, 0.0]) 
     n_absorbers = 2
-    climatology = 1
-    #LAI = 0.17
-    LAI = 0.65
+    climatology = 6
+    LAI = 0.17
+    #LAI = 0.65
     TUNDRA_SURFACE_TYPE         = 10  # NPOESS Land surface type for IR/VIS Land SfcOptics
     SCRUB_SURFACE_TYPE          =  7  # NPOESS Land surface type for IR/VIS Land SfcOptics
     COARSE_SOIL_TYPE            =  1  # Soil type                for MW land SfcOptics
@@ -157,56 +136,75 @@ def main(coefficientPath, sensor_id,\
     FRESH_ICE_TYPE              =  1  # NPOESS Ice type          for IR/VIS SfcOptics
 
 
-    landType = SCRUB_SURFACE_TYPE
+    landType = TUNDRA_SURFACE_TYPE
     soilType = COARSE_SOIL_TYPE
-    vegType = BARE_SOIL_VEGETATION_TYPE
+    vegType = GROUNDCOVER_VEGETATION_TYPE
     waterType = SEA_WATER_TYPE
     snowType = FRESH_SNOW_TYPE
     iceType = FRESH_ICE_TYPE
+
+    h5 = h5py.File('case1.h5','w')
+    for k in list(p['US_Std'].keys()):
+        h5.create_dataset(k,data = p['US_Std'][k])
+    h5.create_dataset('landType',data = landType)
+    h5.create_dataset('soilType',data = soilType)
+    h5.create_dataset('vegType',data = vegType)
+    h5.create_dataset('waterType',data = waterType)
+    h5.create_dataset('snowType', data = snowType)
+    h5.create_dataset('iceType', data = iceType)
+    h5.create_dataset('LAI', data = LAI)
+    h5.create_dataset('n_absorbers', data = 2)
+    h5.create_dataset('climatology', data = climatology)
+    h5.create_dataset('surfaceTemperatures', data = surfaceTemperatures)
+    h5.create_dataset('surfaceFractions', data = surfaceFractions)
+    h5.create_dataset('zenithAngle', data = zenithAngle)
+    h5.create_dataset('scanAngle', data = scanAngle)
+    h5.create_dataset('azimuthAngle', data = azimuthAngle)
+    h5.create_dataset('solarAngle', data = solarAngle)
+    h5.create_dataset('windDirection10m', data = windDirection10m)
+    h5.create_dataset('windSpeed10m', data = windDirection10m)
+    """
+    h5 = h5py.File('case4.h5','r')
+
     chan_list = [577, 607, 626, 650, 667]
-    for k in list(p.keys()):
-        N_LAYERS = p[k]['pressureLayers'].shape[0]
-        print(surfaceTemperatures,surfaceFractions,LAI,windSpeed10m,windDirection10m, n_absorbers)
+    for k in [1,]:
+        print(list(h5.keys()))
         Tb1, Transmission1,\
         emissivity1 = pycrtm.wrap_forward( coefficientPath, sensor_id,\
-                        zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan,\
-                        p[k]['pressureLevels'], p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['humidityLayers'], p[k]['ozoneConcLayers'],\
-                        p[k]['co2ConcLayers'],\
-                        p[k]['aerosolEffectiveRadius'], p[k]['aerosolConcentration'], p[k]['aerosolType'], \
-                        p[k]['cloudEffectiveRadius'], p[k]['cloudConcentration'], p[k]['cloudType'], climatology, \
-                        surfaceTemperatures, surfaceFractions, LAI, windSpeed10m, windDirection10m, n_absorbers,\
-                        landType, soilType, vegType, waterType, snowType, iceType)
+                        h5['zenithAngle'].value, h5['scanAngle'].value, h5['azimuthAngle'].value, h5['solarAngle'].value, nChan, \
+                        h5['pressureLevels'], h5['pressureLayers'], h5['temperatureLayers'], h5['humidityLayers'], h5['ozoneConcLayers'],\
+                        h5['co2ConcLayers'],\
+                        h5['aerosolEffectiveRadius'], h5['aerosolConcentration'], h5['aerosolType'].value, \
+                        h5['cloudEffectiveRadius'], h5['cloudConcentration'], h5['cloudType'].value, h5['cloudFraction'], h5['climatology'].value, \
+                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'].value, h5['windSpeed10m'].value, h5['windDirection10m'].value, h5['n_absorbers'].value,\
+                        h5['landType'].value, h5['soilType'].value, h5['vegType'].value, h5['waterType'].value, h5['snowType'].value, h5['iceType'].value)
 
-
+        print('done forward.')
 
         Tb, Transmission,\
         temperatureJacobian,\
         humidityJacobian,\
         ozoneJacobian, emissivity = pycrtm.wrap_k_matrix( coefficientPath, sensor_id,\
-                        zenithAngle, scanAngle, azimuthAngle, solarAngle, nChan,\
-                        p[k]['pressureLevels'], p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['humidityLayers'], p[k]['ozoneConcLayers'],\
-                        p[k]['co2ConcLayers'],\
-                        p[k]['aerosolEffectiveRadius'], p[k]['aerosolConcentration'], p[k]['aerosolType'],\
-                        p[k]['cloudEffectiveRadius'], p[k]['cloudConcentration'], p[k]['cloudType'], climatology, \
-                        surfaceTemperatures, surfaceFractions, LAI, windSpeed10m, windDirection10m, n_absorbers,\
-                        landType, soilType, vegType, waterType, snowType, iceType)
-                     
-        print('done crtm bit.')
-        h5 = h5py.File('cris_wavenumbers.h5','r')
-        wavenumbers = np.asarray(h5['wavenumbers'])
-        plotJacobians(chan_list, p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['ozoneConcLayers'], ozoneJacobian, 'CrIS_'+k+'_', wavenumbers, 'ozone')
-        plotJacobians(chan_list, p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['ozoneConcLayers'], temperatureJacobian, 'CrIS_'+k+'_', wavenumbers, 'temperature')
-        plotJacobians(chan_list, p[k]['pressureLayers'], p[k]['temperatureLayers'], p[k]['humidityLayers'], humidityJacobian, 'CrIS_'+k+'_', wavenumbers, 'water')
-        with open('bt.bin') as f:
-            dataTb = np.fromfile(f, dtype='<f8' )
+                        h5['zenithAngle'].value, h5['scanAngle'].value, h5['azimuthAngle'].value, h5['solarAngle'].value, nChan,\
+                        h5['pressureLevels'], h5['pressureLayers'], h5['temperatureLayers'], h5['humidityLayers'], h5['ozoneConcLayers'],\
+                        h5['co2ConcLayers'],\
+                        h5['aerosolEffectiveRadius'], h5['aerosolConcentration'], h5['aerosolType'].value, \
+                        h5['cloudEffectiveRadius'], h5['cloudConcentration'], h5['cloudType'].value, h5['cloudFraction'], h5['climatology'].value, \
+                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'].value, h5['windSpeed10m'].value, h5['windDirection10m'].value, h5['n_absorbers'].value,\
+                        h5['landType'].value, h5['soilType'].value, h5['vegType'].value, h5['waterType'].value, h5['snowType'].value, h5['iceType'].value)
+
+        print('done k matrix.')
+        h5wav = h5py.File('cris_wavenumbers.h5','r')
+        wavenumbers = np.asarray(h5wav['wavenumbers'])
+        plotJacobians(chan_list, np.asarray(h5['pressureLayers']), np.asarray(h5['temperatureLayers']), np.asarray(h5['ozoneConcLayers']), ozoneJacobian, 'CrIS_'+str(k)+'_', wavenumbers, 'ozone')
+        plotJacobians(chan_list, np.asarray(h5['pressureLayers']), np.asarray(h5['temperatureLayers']), np.asarray(h5['ozoneConcLayers']), temperatureJacobian, 'CrIS_'+str(k)+'_', wavenumbers, 'temperature')
+        plotJacobians(chan_list, np.asarray(h5['pressureLayers']), np.asarray(h5['temperatureLayers']), np.asarray(h5['humidityLayers']), humidityJacobian, 'CrIS_'+str(k)+'_', wavenumbers, 'water')
         plt.figure()
-        plt.plot(wavenumbers,Tb-dataTb)
+        plt.plot(wavenumbers,Tb-h5['Tb'])
         plt.savefig('spectrum.png')
 
-        with open('emissivity.bin') as f:
-            emissivitySaved = np.fromfile(f, dtype='<f8' )
         plt.figure()
-        plt.plot(wavenumbers,emissivity-emissivitySaved)
+        plt.plot(wavenumbers,emissivity-h5['emissivity'])
         plt.savefig('emissivity.png') 
 if __name__ == "__main__":
     pathInfo = configparser.ConfigParser()

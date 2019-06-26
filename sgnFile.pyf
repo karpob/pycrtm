@@ -4,7 +4,7 @@
 python module pycrtm ! in 
     interface  ! in :pycrtm
         module pycrtm ! in :pycrtm:pycrtm.f90
-            subroutine wrap_forward(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_layers,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,climatology,surfacetemperatures,surfacefractions,lai,windspeed10m,winddirection10m,n_absorbers,landtype,soiltype,vegtype,watertype,snowtype,icetype,outtb,outtransmission,emissivity) ! in :pycrtm:pycrtm.f90:pycrtm
+            subroutine wrap_forward(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_layers,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,cloudfraction,climatology,surfacetemperatures,surfacefractions,lai,windspeed10m,winddirection10m,n_absorbers,landtype,soiltype,vegtype,watertype,snowtype,icetype,outtb,outtransmission,emissivity) ! in :pycrtm:pycrtm.f90:pycrtm
                 use crtm_module
                 character*(*) intent(in) :: coefficientpath
                 character*(*) intent(in) :: sensor_id_in
@@ -26,6 +26,7 @@ python module pycrtm ! in
                 real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: cloudeffectiveradius
                 real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: cloudconcentration
                 integer intent(in) :: cloudtype
+                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: cloudfraction
                 integer intent(in) :: climatology
                 real(kind=8) dimension(4),intent(in) :: surfacetemperatures
                 real(kind=8) dimension(4),intent(in) :: surfacefractions
@@ -43,7 +44,7 @@ python module pycrtm ! in
                 real(kind=8) dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: outtransmission
                 real(kind=8) dimension(nchan),intent(out),depend(nchan) :: emissivity
             end subroutine wrap_forward
-            subroutine wrap_k_matrix(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_layers,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,climatology,surfacetemperatures,surfacefractions,lai,windspeed10m,winddirection10m,n_absorbers,landtype,soiltype,vegtype,watertype,snowtype,icetype,outtb,outtransmission,temperaturejacobian,humidityjacobian,ozonejacobian,emissivity) ! in :pycrtm:pycrtm.f90:pycrtm
+            subroutine wrap_k_matrix(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_layers,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,cloudfraction,climatology,surfacetemperatures,surfacefractions,lai,windspeed10m,winddirection10m,n_absorbers,landtype,soiltype,vegtype,watertype,snowtype,icetype,outtb,outtransmission,temperaturejacobian,humidityjacobian,ozonejacobian,emissivity) ! in :pycrtm:pycrtm.f90:pycrtm
                 use crtm_module
                 character*1024 intent(in) :: coefficientpath
                 character*(*) intent(in) :: sensor_id_in
@@ -65,6 +66,7 @@ python module pycrtm ! in
                 real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: cloudeffectiveradius
                 real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: cloudconcentration
                 integer intent(in) :: cloudtype
+                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: cloudfraction
                 integer intent(in) :: climatology
                 real(kind=8) dimension(4),intent(in) :: surfacetemperatures
                 real(kind=8) dimension(4),intent(in) :: surfacefractions
