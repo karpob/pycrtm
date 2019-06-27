@@ -440,7 +440,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
                         chinfo, &
                         File_Path=coefficientPath, &
                         !MWwaterCoeff_File = 'FASTEM5.MWwater.EmisCoeff.bin', & 
-                        Quiet=.False.)
+                        Quiet=.True.)
   IF ( err_stat /= SUCCESS ) THEN
     message = 'Error initializing CRTM'
     CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
