@@ -200,10 +200,17 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! ------------------
     ! All profiles are given the same value
     !  The Sensor_SCAN_ANGLE is optional.  !! BMK- Oh? this would be nice. Not sure if that's true though. Think you need it for FastEm?
-    CALL CRTM_Geometry_SetValue( geo, &
+    if(azimuthAngle > 0.0_fp) then
+        CALL CRTM_Geometry_SetValue( geo, &
                                  Sensor_Zenith_Angle = zenithAngle, &
                                  Sensor_Scan_Angle   = scanAngle,   & 
                                  Sensor_Azimuth_Angle = azimuthAngle )
+    
+    else  
+        CALL CRTM_Geometry_SetValue( geo, &
+                                 Sensor_Zenith_Angle = zenithAngle, &
+                                 Sensor_Scan_Angle   = scanAngle)
+    endif 
     ! ==========================================================================
     ! 4a.1 Profile #1
     ! ---------------
@@ -361,14 +368,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   real(kind=8), intent(out) :: outTb(nChan), emissivity(nChan)
   real(kind=8), intent(out) :: outTransmission(nChan,N_LAYERS), temperatureJacobian(nChan,N_LAYERS)
   real(kind=8), intent(out) ::  humidityJacobian(nChan,N_LAYERS), ozoneJacobian(nChan, N_LAYERS)
-  INTEGER, PARAMETER :: TUNDRA_SURFACE_TYPE         = 10  ! NPOESS Land surface type for IR/VIS Land SfcOptics
-  INTEGER, PARAMETER :: SCRUB_SURFACE_TYPE          =  7  ! NPOESS Land surface type for IR/VIS Land SfcOptics
-  INTEGER, PARAMETER :: COARSE_SOIL_TYPE            =  1  ! Soil type                for MW land SfcOptics
-  INTEGER, PARAMETER :: GROUNDCOVER_VEGETATION_TYPE =  7  ! Vegetation type          for MW Land SfcOptics
-  INTEGER, PARAMETER :: BARE_SOIL_VEGETATION_TYPE   = 11  ! Vegetation type          for MW Land SfcOptics
-  INTEGER, PARAMETER :: SEA_WATER_TYPE              =  1  ! Water type               for all SfcOptics
-  INTEGER, PARAMETER :: FRESH_SNOW_TYPE             =  2  ! NPOESS Snow type         for IR/VIS SfcOptics
-  INTEGER, PARAMETER :: FRESH_ICE_TYPE              =  1  ! NPOESS Ice type          for IR/VIS SfcOptics
+  
 
   character(len=256) :: sensor_id(1)
   ! ============================================================================
@@ -567,10 +567,19 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! ------------------
     ! All profiles are given the same value
     !  The Sensor_SCAN_ANGLE is optional.  !! BMK- Oh? this would be nice. Not sure if that's true though.
-    CALL CRTM_Geometry_SetValue( geo, &
+    if(azimuthAngle > 0.0_fp) then
+        CALL CRTM_Geometry_SetValue( geo, &
                                  Sensor_Zenith_Angle = zenithAngle, &
-                                 Sensor_Scan_Angle   = scanAngle ,  &
+                                 Sensor_Scan_Angle   = scanAngle,   & 
                                  Sensor_Azimuth_Angle = azimuthAngle )
+    
+    else  
+        CALL CRTM_Geometry_SetValue( geo, &
+                                 Sensor_Zenith_Angle = zenithAngle, &
+                                 Sensor_Scan_Angle   = scanAngle)
+    endif 
+
+
     ! ==========================================================================
 
 
