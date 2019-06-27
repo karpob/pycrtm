@@ -36,27 +36,34 @@ def main(coefficientPath, sensor_id):
 
         h5wav = h5py.File('cris_wavenumbers.h5','r')
         wavenumbers = np.asarray(h5wav['wavenumbers'])
-        plt.figure()
-        plt.plot(wavenumbers,kTb-h5['Tb'])
-        plt.savefig(c+'_spectrum_k_matrix.png')
+        
+        diffK = kTb-h5['Tb']
+        diffKemis = kEmissivity-h5['emissivity']
+        
+        if ( all(np.abs(diffKemis) <= 0.0)  and all(np.abs(diffK) <= 0.0) ):
+            print ("Yay! we duplicated results from CRTM test program!")
+        else:
+            plt.figure()
+            plt.plot(wavenumbers,kTb-h5['Tb'])
+            plt.savefig(c+'_spectrum_k_matrix.png')
 
-        plt.figure()
-        plt.plot(wavenumbers,kEmissivity-h5['emissivity'])
-        plt.savefig(c+'_emissivity_k_matrix.png') 
+            plt.figure()
+            plt.plot(wavenumbers,kEmissivity-h5['emissivity'])
+            plt.savefig(c+'_emissivity_k_matrix.png') 
 
-        plt.figure()
-        plt.plot(wavenumbers,forwardTb-h5['Tb'])
-        plt.savefig(c+'_spectrum_forward.png')
+            plt.figure()
+            plt.plot(wavenumbers,forwardTb-h5['Tb'])
+            plt.savefig(c+'_spectrum_forward.png')
 
-        plt.figure()
-        plt.plot(wavenumbers,forwardEmissivity-h5['emissivity'])
-        plt.savefig(c+'_emissivity_forward.png') 
-    print('done.')
+            plt.figure()
+            plt.plot(wavenumbers,forwardEmissivity-h5['emissivity'])
+            plt.savefig(c+'_emissivity_forward.png') 
+            sys.exit("Boo! {} failed to pass a test. look at plots for details.")
+
 if __name__ == "__main__":
     pathInfo = configparser.ConfigParser()
     pathInfo.read('crtm.cfg')
     coefficientPath = pathInfo['CRTM']['coeffs_dir']
-    #sensor_id = 'atms_n20'
     sensor_id = 'cris_npp' 
     main(coefficientPath, sensor_id)
  
