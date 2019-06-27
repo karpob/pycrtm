@@ -187,8 +187,14 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     atm(1)%Cloud(1)%Type = cloudType
     atm(1)%Cloud(1)%Effective_Radius = cloudEffectiveRadius
     atm(1)%Cloud(1)%Water_Content = cloudConcentration
-    atm(1)%Absorber(:,3)     = co2ConcLayers
     atm(1)%Cloud_Fraction = cloudFraction
+
+    if(n_absorbers>2) then 
+        atm(1)%Absorber(:,3)     = co2ConcLayers
+        atm(1)%Absorber_Id(3)     = CO2_ID
+        atm(1)%absorber_units(3) = VOLUME_MIXING_RATIO_UNITS
+    endif
+
 
     ! 6b. Geometry input
     ! ------------------
@@ -533,8 +539,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     !     instructions in this program relatively "clean".
     ! ------------------------------------------------------------------------
     atm(1)%Climatology         = climatology  
-    atm(1)%Absorber_Id(1:3)    = (/ H2O_ID                 , O3_ID, CO2_ID /)
-    atm(1)%Absorber_Units(1:3) = (/ MASS_MIXING_RATIO_UNITS, VOLUME_MIXING_RATIO_UNITS, VOLUME_MIXING_RATIO_UNITS /)
+    atm(1)%Absorber_Id(1:2)    = (/ H2O_ID                 , O3_ID /)
+    atm(1)%Absorber_Units(1:2) = (/ MASS_MIXING_RATIO_UNITS, VOLUME_MIXING_RATIO_UNITS /)
     ! ...Profile data
     atm(1)%Level_Pressure = pressureLevels
     atm(1)%Pressure = pressureLayers
@@ -549,7 +555,13 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     atm(1)%Cloud(1)%Effective_Radius = cloudEffectiveRadius
     atm(1)%Cloud(1)%Water_Content = cloudConcentration
     atm(1)%Cloud_Fraction = cloudFraction
-    atm(1)%Absorber(:,3)     = co2ConcLayers
+
+    if(n_absorbers>2) then 
+        atm(1)%Absorber(:,3)     = co2ConcLayers
+        atm(1)%Absorber_Id(3)     = CO2_ID
+        atm(1)%absorber_units(3) = VOLUME_MIXING_RATIO_UNITS
+    endif
+
     ! 6b. Geometry input
     ! ------------------
     ! All profiles are given the same value

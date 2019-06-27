@@ -98,7 +98,7 @@ def selectCompilerFlags(arch):
         if ( int(so.decode("utf-8").split('.')[0]) < 6 ):
             sys.exit("F2008 required. gcc >= 6")
         
-        compilerFlags['gfortran-openmp']['FCFLAGS1']="-fimplicit-none -ffree-form -fPIC -fopenmp -fno-second-underscore -frecord-marker=4 -std=f2008"
+        compilerFlags['gfortran-openmp']['FCFLAGS1']="-fimplicit-none -ffree-form -fPIC -fopenmp -fno-second-underscore -frecord-marker=4 -std=f2008 -fcheck=all"
         compilerFlags['gfortran-openmp']['FCFLAGS2']=""# -lgomp -I"+gccGompPath+" -L"+gccLibPath
         compilerFlags['gfortran-openmp']['LDFLAGS']="-Wall -g -shared -lgomp"
         compilerFlags['gfortran-openmp']['F2PY_COMPILER']="gnu95"
