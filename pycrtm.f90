@@ -6,7 +6,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
                         co2ConcLayers, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
                         cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology, & 
-                        surfaceTemperatures, surfaceFractions, LAI, windSpeed10m, windDirection10m, n_absorbers, & 
+                        surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m, n_absorbers, & 
                         landType, soilType, vegType, waterType, snowType, iceType, &  
                         outTb, outTransmission, & 
                         emissivity )      
@@ -33,7 +33,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   real(kind=8), intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
   real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS), cloudFraction(N_LAYERS)
   integer, intent(in) :: aerosolType, cloudType, n_absorbers, climatology
-  real(kind=8), intent(in) :: surfaceTemperatures(4), surfaceFractions(4), LAI, windSpeed10m, windDirection10m
+  real(kind=8), intent(in) :: surfaceTemperatures(4), surfaceFractions(4), LAI, salinity,  windSpeed10m, windDirection10m
   integer, intent(in) ::  landType, soilType, vegType, waterType, snowType, iceType 
   real(kind=8), intent(out) :: outTb(nChan), emissivity(nChan)
   real(kind=8), intent(out) :: outTransmission(nChan,N_LAYERS)
@@ -218,11 +218,12 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     sfc%Water_Coverage    = surfaceFractions(2)
     sfc%Water_Type        = waterType !SEA_WATER_TYPE
     sfc%Water_Temperature = surfaceTemperatures(2)
-    !Sfc%Wind_Direction = windDirection10m
-    !Sfc%Wind_Speed = windSpeed10m
-    !Sfc%Salinity = 0.0_fp   
 
-
+    if( windSpeed10m > 0.0_fp ) then
+        Sfc%Wind_Direction = windDirection10m
+        Sfc%Wind_Speed = windSpeed10m
+        Sfc%Salinity = 0.0_fp
+    endif    
 
     ! ...Snow coverage characteristics
     sfc%Snow_Coverage    = surfaceFractions(3)
@@ -319,7 +320,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
                         co2ConcLayers, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
                         cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology, & 
-                        surfaceTemperatures, surfaceFractions, LAI, windSpeed10m, windDirection10m, n_absorbers, & 
+                        surfaceTemperatures, surfaceFractions, LAI, salinity, windSpeed10m, windDirection10m, n_absorbers, & 
                         landType, soilType, vegType, waterType, snowType, iceType, &  
                         outTb, outTransmission, & 
                         temperatureJacobian, humidityJacobian, ozoneJacobian, emissivity )      
@@ -355,7 +356,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   real(kind=8), intent(in) :: aerosolEffectiveRadius(N_LAYERS), aerosolConcentration(N_LAYERS)
   real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS), cloudConcentration(N_LAYERS), cloudFraction(N_LAYERS)
   integer, intent(in) :: aerosolType, cloudType, n_absorbers, climatology
-  real(kind=8), intent(in) :: surfaceTemperatures(4), surfaceFractions(4), LAI, windSpeed10m, windDirection10m
+  real(kind=8), intent(in) :: surfaceTemperatures(4), surfaceFractions(4), LAI, salinity, windSpeed10m, windDirection10m
   integer, intent(in) :: landType, soilType, vegType, waterType, snowType, iceType 
   real(kind=8), intent(out) :: outTb(nChan), emissivity(nChan)
   real(kind=8), intent(out) :: outTransmission(nChan,N_LAYERS), temperatureJacobian(nChan,N_LAYERS)
@@ -604,11 +605,12 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     sfc%Water_Coverage    = surfaceFractions(2)
     sfc%Water_Type        = waterType !SEA_WATER_TYPE
     sfc%Water_Temperature = surfaceTemperatures(2)
-    !Sfc%Wind_Direction = windDirection10m
-    !Sfc%Wind_Speed = windSpeed10m
-    !Sfc%Salinity = 0.0_fp   
 
-
+    if( windSpeed10m > 0.0_fp ) then
+        Sfc%Wind_Direction = windDirection10m
+        Sfc%Wind_Speed = windSpeed10m
+        Sfc%Salinity = salinity
+    endif    
 
     ! ...Snow coverage characteristics
     sfc%Snow_Coverage    = surfaceFractions(3)

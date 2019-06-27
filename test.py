@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 
 def main(coefficientPath, sensor_id):
     cases = os.listdir('testCases/')
+    salinity = 35.0
     for c in cases:
         h5 = h5py.File(os.path.join('testCases',c) , 'r')
         nChan = np.asarray(h5['Tb']).shape[0] 
@@ -17,7 +18,7 @@ def main(coefficientPath, sensor_id):
                         h5['co2ConcLayers'],\
                         h5['aerosolEffectiveRadius'], h5['aerosolConcentration'], h5['aerosolType'].value, \
                         h5['cloudEffectiveRadius'], h5['cloudConcentration'], h5['cloudType'].value, h5['cloudFraction'], h5['climatology'].value, \
-                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'].value, h5['windSpeed10m'].value, h5['windDirection10m'].value, h5['n_absorbers'].value,\
+                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'].value, salinity, h5['windSpeed10m'].value, h5['windDirection10m'].value, h5['n_absorbers'].value,\
                         h5['landType'].value, h5['soilType'].value, h5['vegType'].value, h5['waterType'].value, h5['snowType'].value, h5['iceType'].value)
 
         kTb, kTransmission,\
@@ -29,7 +30,7 @@ def main(coefficientPath, sensor_id):
                         h5['co2ConcLayers'],\
                         h5['aerosolEffectiveRadius'], h5['aerosolConcentration'], h5['aerosolType'].value, \
                         h5['cloudEffectiveRadius'], h5['cloudConcentration'], h5['cloudType'].value, h5['cloudFraction'], h5['climatology'].value, \
-                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'].value, h5['windSpeed10m'].value, h5['windDirection10m'].value, h5['n_absorbers'].value,\
+                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'].value, salinity, h5['windSpeed10m'].value, h5['windDirection10m'].value, h5['n_absorbers'].value,\
                         h5['landType'].value, h5['soilType'].value, h5['vegType'].value, h5['waterType'].value, h5['snowType'].value, h5['iceType'].value)
         
 
