@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 import configparser
-import os, h5py 
+import os, h5py,sys 
 from pycrtm import pycrtm 
 import numpy as np
 from matplotlib import pyplot as plt
 
 def main(coefficientPath, sensor_id):
-    cases = os.listdir('testCases/')
     salinity = 35.0
+    thisDir = os.path.dirname(os.path.abspath(__file__))
+    cases = os.listdir( os.path.join(thisDir,'testCases/') ) 
+    cases.sort()
     for c in cases:
-        h5 = h5py.File(os.path.join('testCases',c) , 'r')
+        h5 = h5py.File(os.path.join(thisDir, 'testCases', c) , 'r')
         nChan = np.asarray(h5['Tb']).shape[0] 
         forwardTb, forwardTransmission,\
         forwardEmissivity = pycrtm.wrap_forward( coefficientPath, sensor_id,\
@@ -34,8 +36,6 @@ def main(coefficientPath, sensor_id):
                         h5['landType'].value, h5['soilType'].value, h5['vegType'].value, h5['waterType'].value, h5['snowType'].value, h5['iceType'].value)
         
 
-        h5wav = h5py.File('cris_wavenumbers.h5','r')
-        wavenumbers = np.asarray(h5wav['wavenumbers'])
         
         diffK = kTb-h5['Tb']
         diffKemis = kEmissivity-h5['emissivity']
@@ -43,22 +43,25 @@ def main(coefficientPath, sensor_id):
         if ( all(np.abs(diffKemis) <= 0.0)  and all(np.abs(diffK) <= 0.0) ):
             print ("Yay! we duplicated results from CRTM test program!")
         else:
+            h5wav = h5py.File(os.path.join(thisDir,'cris_wavenumbers.h5'),'r')
+            wavenumbers = np.asarray(h5wav['wavenumbers'])
+            
             plt.figure()
             plt.plot(wavenumbers,kTb-h5['Tb'])
-            plt.savefig(c+'_spectrum_k_matrix.png')
+            plt.savefig( os.path.join(thisDir,c+'_spectrum_k_matrix.png') )
 
             plt.figure()
             plt.plot(wavenumbers,kEmissivity-h5['emissivity'])
-            plt.savefig(c+'_emissivity_k_matrix.png') 
+            plt.savefig( os.path.join(thisDir,c+'_emissivity_k_matrix.png') ) 
 
             plt.figure()
             plt.plot(wavenumbers,forwardTb-h5['Tb'])
-            plt.savefig(c+'_spectrum_forward.png')
+            plt.savefig( os.path.join(thisDir,c+'_spectrum_forward.png') )
 
             plt.figure()
             plt.plot(wavenumbers,forwardEmissivity-h5['emissivity'])
-            plt.savefig(c+'_emissivity_forward.png') 
-            sys.exit("Boo! {} failed to pass a test. look at plots for details.")
+            plt.savefig( os.path.join(thisDir,c+'_emissivity_forward.png') ) 
+            sys.exit("Boo! {} failed to pass a test. look at plots for details in {}.".format(c,thisDir))
 
 if __name__ == "__main__":
     pathInfo = configparser.ConfigParser()

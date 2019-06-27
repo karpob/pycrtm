@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
 import configparser
-import os, h5py 
+import os, h5py, sys 
 from pycrtm import pycrtm 
 import numpy as np
 from matplotlib import pyplot as plt
 
 def main(coefficientPath, sensor_id):
-    cases = os.listdir('testCases/')
+    thisDir = os.path.dirname(os.path.abspath(__file__))
+    cases = os.listdir( os.path.join(thisDir,'testCases') )
+    cases.sort()
     salinity = 35.0
     for c in cases:
-        h5 = h5py.File(os.path.join('testCases',c) , 'r')
+        h5 = h5py.File(os.path.join(thisDir, 'testCases',c) , 'r')
         nChan = 22
         forwardTb, forwardTransmission,\
         forwardEmissivity = pycrtm.wrap_forward( coefficientPath, sensor_id,\
@@ -43,26 +45,25 @@ def main(coefficientPath, sensor_id):
         else:
             plt.figure()
             plt.plot(wavenumbers,kTb-h5['Tb_atms'][0:22])
-            plt.savefig(c+'_spectrum_k_matrix.png')
+            plt.savefig(os.path.join(thisDir,c+'_spectrum_k_matrix.png'))
 
             plt.figure()
             plt.plot(wavenumbers,kEmissivity-h5['emissivity_atms'][0:22])
-            plt.savefig(c+'_emissivity_k_matrix.png') 
+            plt.savefig(os.path.join(thisDir,c+'_emissivity_k_matrix.png')) 
 
             plt.figure()
             plt.plot(wavenumbers,forwardTb-h5['Tb_atms'][0:22])
-            plt.savefig(c+'_spectrum_forward.png')
+            plt.savefig(os.path.join(thisDir,c+'_spectrum_forward.png'))
 
             plt.figure()
             plt.plot(wavenumbers,forwardEmissivity-h5['emissivity_atms'][0:22])
-            plt.savefig(c+'_emissivity_forward.png') 
-            sys.exit("Boo! {} failed to pass a test. look at plots for details.")
+            plt.savefig(os.path.join(thisDir,c+'_emissivity_forward.png')) 
+            sys.exit("Boo! {} failed to pass a test. look at plots in {} for details.".format(c,thisDir) )
 
 if __name__ == "__main__":
     pathInfo = configparser.ConfigParser()
     pathInfo.read('crtm.cfg')
     coefficientPath = pathInfo['CRTM']['coeffs_dir']
     sensor_id = 'atms_npp'
-    #sensor_id = 'cris_npp' 
     main(coefficientPath, sensor_id)
  
