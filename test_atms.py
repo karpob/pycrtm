@@ -56,7 +56,7 @@ if __name__ == "__main__":
     pathInfo = configparser.ConfigParser()
     pathInfo.read('crtm.cfg')
     coefficientPath = pathInfo['CRTM']['coeffs_dir']
-    sensor_id = 'atms_n20'
+    sensor_id = 'atms_npp'
     #sensor_id = 'cris_npp' 
     main(coefficientPath, sensor_id)
  
