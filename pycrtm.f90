@@ -200,7 +200,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! ------------------
     ! All profiles are given the same value
     !  The Sensor_SCAN_ANGLE is optional.  !! BMK- Oh? this would be nice. Not sure if that's true though. Think you need it for FastEm?
-    if(azimuthAngle > 0.0_fp) then
+    if(azimuthAngle > -9999.0_fp) then
         CALL CRTM_Geometry_SetValue( geo, &
                                  Sensor_Zenith_Angle = zenithAngle, &
                                  Sensor_Scan_Angle   = scanAngle,   & 
@@ -567,7 +567,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! ------------------
     ! All profiles are given the same value
     !  The Sensor_SCAN_ANGLE is optional.  !! BMK- Oh? this would be nice. Not sure if that's true though.
-    if(azimuthAngle > 0.0_fp) then
+    if(azimuthAngle > -9999.0_fp) then
         CALL CRTM_Geometry_SetValue( geo, &
                                  Sensor_Zenith_Angle = zenithAngle, &
                                  Sensor_Scan_Angle   = scanAngle,   & 
