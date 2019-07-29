@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 import configparser
 import os, h5py,sys 
-from pycrtm import pycrtm 
 import numpy as np
 from matplotlib import pyplot as plt
+thisDir = os.path.dirname(os.path.abspath(__file__))
+parentDir = os.path.dirname(thisDir)
+sys.path.insert(0,parentDir)
+from pycrtm import pycrtm
 
 def main(coefficientPath, sensor_id):
     salinity = 35.0
     thisDir = os.path.dirname(os.path.abspath(__file__))
-    cases = os.listdir( os.path.join(thisDir,'testCases/') ) 
+    cases = os.listdir( os.path.join(thisDir,'data') ) 
     cases.sort()
     for c in cases:
-        h5 = h5py.File(os.path.join(thisDir, 'testCases', c) , 'r')
+        h5 = h5py.File(os.path.join(thisDir, 'data', c) , 'r')
         nChan = np.asarray(h5['Tb']).shape[0] 
         forwardTb, forwardTransmission,\
         forwardEmissivity = pycrtm.wrap_forward( coefficientPath, sensor_id,\
@@ -65,7 +68,7 @@ def main(coefficientPath, sensor_id):
 
 if __name__ == "__main__":
     pathInfo = configparser.ConfigParser()
-    pathInfo.read('crtm.cfg')
+    pathInfo.read( os.path.join( parentDir, 'crtm.cfg' ) )
     coefficientPath = pathInfo['CRTM']['coeffs_dir']
     sensor_id = 'cris_npp' 
     main(coefficientPath, sensor_id)
