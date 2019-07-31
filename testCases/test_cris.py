@@ -43,7 +43,7 @@ def main(coefficientPath, sensor_id):
         diffK = kTb-h5['Tb']
         diffKemis = kEmissivity-h5['emissivity']
         
-        if ( all(np.abs(diffKemis) <= 0.0)  and all(np.abs(diffK) <= 0.0) ):
+        if ( all(np.abs(diffKemis) <= 1e-8)  and all(np.abs(diffK) <= 1e-8) ):
             print ("Yay! we duplicated results from CRTM test program!")
         else:
             h5wav = h5py.File(os.path.join(thisDir,'cris_wavenumbers.h5'),'r')
