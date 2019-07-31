@@ -54,8 +54,8 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
 
   ! Profile dimensions
   INTEGER, PARAMETER :: N_PROFILES  = 1
-  INTEGER, PARAMETER :: N_CLOUDS    = 1 
-  INTEGER, PARAMETER :: N_AEROSOLS  = 1
+  INTEGER :: N_CLOUDS
+  INTEGER :: N_AEROSOLS
   
   ! Sensor information
   INTEGER     , PARAMETER :: N_SENSORS = 1
@@ -72,7 +72,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   INTEGER :: n_channels
   INTEGER :: l, m, n, nc, ll,mm, nn
   real, dimension(n_layers,nchan) :: outTau
-
+  logical :: cloudsOn, aerosolsOn
 
   ! ============================================================================
   ! STEP 3. **** DEFINE THE CRTM INTERFACE STRUCTURES ****
@@ -102,8 +102,33 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   !
   ! 4a. Initialise all the sensors at once
   ! --------------------------------------
+  ! Karpowicz addition... if we have less than -9999 for all concentrations, don't turn on aerosols/clouds.
+  if( all(aerosolConcentration < -9999.0) ) then
+    N_AEROSOLS = 0
+    aerosolsOn = .False.
+  else
+    N_AEROSOLS = 1
+    aerosolsOn = .True. 
+  endif
+
+  if( all(cloudConcentration < -9999.0) ) then
+    N_CLOUDS = 0
+    cloudsOn = .False.
+  else
+    N_CLOUDS = 1
+    cloudsOn = .True. 
+  endif
+  ! End Karpowicz change to CRTM-style interface.
+
   WRITE( *,'(/5x,"Initializing the CRTM...")' )
-  err_stat = CRTM_Init( sensor_id,  chinfo, File_Path=coefficientPath, Quiet=.TRUE.)
+
+  ! if aerosols or cloud concentrations specified as < -9999, don't load cloud/aerosol coefficients.
+
+  err_stat = CRTM_Init( sensor_id,  chinfo, &
+                        File_Path=coefficientPath, &
+                        Load_CloudCoeff = cloudsOn, &  
+                        Load_AerosolCoeff = aerosolsOn, &  
+                        Quiet=.True. )
 
   IF ( err_stat /= SUCCESS ) THEN
     message = 'Error initializing CRTM'
@@ -153,6 +178,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     !           are allocated in this example
     ! ----------------------------------------
     ! The input FORWARD structure
+    
     CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_ABSORBERS, N_CLOUDS, N_AEROSOLS )
     IF ( ANY(.NOT. CRTM_Atmosphere_Associated(atm)) ) THEN
       message = 'Error allocating CRTM Forward Atmosphere structure'
@@ -180,18 +206,23 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     atm(1)%Absorber(:,1) = humidityLayers
     atm(1)%Absorber(:,2) = ozoneConcLayers
 
-    atm(1)%Aerosol(1)%Type = aerosolType
-    atm(1)%Aerosol(1)%Effective_Radius = aerosolEffectiveRadius
-    atm(1)%Aerosol(1)%Concentration = aerosolConcentration
 
-    atm(1)%Cloud(1)%Type = cloudType
-    atm(1)%Cloud(1)%Effective_Radius = cloudEffectiveRadius
-    atm(1)%Cloud(1)%Water_Content = cloudConcentration
-    atm(1)%Cloud_Fraction = cloudFraction
+    if( aerosolsOn )  then
+        atm(1)%Aerosol(1)%Type                = aerosolType
+        atm(1)%Aerosol(1)%Effective_Radius(:) = aerosolEffectiveRadius(:)
+        atm(1)%Aerosol(1)%Concentration(:)    = aerosolConcentration(:)
+    endif
+
+    if( cloudsOn ) then
+        atm(1)%Cloud(1)%Type                = cloudType
+        atm(1)%Cloud(1)%Effective_Radius(:) = cloudEffectiveRadius(:)
+        atm(1)%Cloud(1)%Water_Content(:)    = cloudConcentration(:)
+        atm(1)%Cloud_Fraction(:)            = cloudFraction(:)
+    endif
 
     if(n_absorbers>2) then 
         atm(1)%Absorber(:,3)     = co2ConcLayers
-        atm(1)%Absorber_Id(3)     = CO2_ID
+        atm(1)%Absorber_Id(3)    = CO2_ID
         atm(1)%absorber_units(3) = VOLUME_MIXING_RATIO_UNITS
     endif
 
@@ -250,11 +281,6 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! 8a. The forward model
     ! ---------------------
 
-    call crtm_options_create( options, nChan )
-    if ( any(.not. crtm_options_associated( options )) ) then 
-        call display_message( subroutine_name, 'error allocating options', FAILURE)  
-        return
-    endif
     ! Need this to get transmission out of solution, otherwise won't be allocated !!!
     call crtm_rtsolution_create( rts, n_layers )
     if ( any(.not. crtm_rtsolution_associated( rts )) ) then
@@ -262,15 +288,27 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
         return
     end if
 
-    options%Use_Emissivity = .false.
-    options%Use_Direct_Reflectivity = .false.
+    ! why did I put this here????
+    !call crtm_options_create( options, nChan )
+    !if ( any(.not. crtm_options_associated( options )) ) then 
+    !    call display_message( subroutine_name, 'error allocating options', FAILURE)  
+    !    return
+    !endif
+
+    !options%Use_Emissivity = .false.
+    !options%Use_Direct_Reflectivity = .false.
+
+    !! Karpowicz addition to CRTM-style interface, switch to force scattering off when aerosols and clouds turned off.
+    !if (.not. cloudsOn .and. .not. aerosolsOn) then 
+    !    options%Include_Scattering = .false.
+    !end if 
 
     err_stat = CRTM_Forward( atm        , &  ! Input
                              sfc        , &  ! Input
                              geo        , &  ! Input
                              chinfo, &  ! Input
-                             rts,    & ! Output
-                            options = options ) 
+                             rts ) !,    & ! Output
+    !                        options = options ) 
     IF ( err_stat /= SUCCESS ) THEN
       message = 'Error calling CRTM Forward Model for '//TRIM(sensor_id(n))
       CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
@@ -378,8 +416,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
 
   ! Profile dimensions
   INTEGER, PARAMETER :: N_PROFILES  = 1
-  INTEGER, PARAMETER :: N_CLOUDS    = 1
-  INTEGER, PARAMETER :: N_AEROSOLS  = 1
+  INTEGER :: N_CLOUDS 
+  INTEGER :: N_AEROSOLS
   
   ! Sensor information
   INTEGER     , PARAMETER :: N_SENSORS = 1
@@ -394,7 +432,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   INTEGER :: err_stat, alloc_stat
   INTEGER :: n_channels
   INTEGER :: l, m, n, nc
-
+  Logical :: cloudsOn, aerosolsOn
 
 
   ! ============================================================================
@@ -434,13 +472,34 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   !
   ! 4a. Initialise all the sensors at once
   ! --------------------------------------
+  if( all(aerosolConcentration < -9999.0) ) then
+    N_AEROSOLS = 0
+    aerosolsOn = .False.
+  else
+    N_AEROSOLS = 1
+    aerosolsOn = .True. 
+  endif
+
+  if( all(cloudConcentration < -9999.0) ) then
+    N_CLOUDS = 0
+    cloudsOn = .False.
+  else
+    N_CLOUDS = 1
+    cloudsOn = .True. 
+  endif
+
   allocate(atm(N_PROFILES), sfc(N_PROFILES))
   WRITE( *,'(/5x,"Initializing the CRTM...")' )
-  err_stat = CRTM_Init( sensor_id, &
-                        chinfo, &
+ 
+ ! if aerosols or cloud concentrations specified as < -9999, don't load cloud/aerosol coefficients.
+
+  err_stat = CRTM_Init( sensor_id,  chinfo, &
                         File_Path=coefficientPath, &
-                        !MWwaterCoeff_File = 'FASTEM5.MWwater.EmisCoeff.bin', & 
-                        Quiet=.True.)
+                        Load_CloudCoeff = cloudsOn, &  
+                        Load_AerosolCoeff = aerosolsOn, &  
+                        Quiet=.True. )
+
+
   IF ( err_stat /= SUCCESS ) THEN
     message = 'Error initializing CRTM'
     CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
@@ -462,6 +521,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     !           are allocated in this example
     ! ----------------------------------------
     ! The input FORWARD structure
+
+
     CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_ABSORBERS, N_CLOUDS, N_AEROSOLS )
     IF ( ANY(.NOT. CRTM_Atmosphere_Associated(atm)) ) THEN
       message = 'Error allocating CRTM Forward Atmosphere structure'
@@ -548,19 +609,23 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     atm(1)%Temperature = temperatureLayers
     atm(1)%Absorber(:,1) = humidityLayers
     atm(1)%Absorber(:,2) = ozoneConcLayers
-    atm(1)%Aerosol(1)%Type = aerosolType
-    atm(1)%Aerosol(1)%Effective_Radius = aerosolEffectiveRadius
-    atm(1)%Aerosol(1)%Concentration = aerosolConcentration
+    if( aerosolsOn )  then
+        atm(1)%Aerosol(1)%Type                = aerosolType
+        atm(1)%Aerosol(1)%Effective_Radius(:) = aerosolEffectiveRadius(:)
+        atm(1)%Aerosol(1)%Concentration(:)    = aerosolConcentration(:)
+    endif
 
-    atm(1)%Cloud(1)%Type = cloudType
-    atm(1)%Cloud(1)%Effective_Radius = cloudEffectiveRadius
-    atm(1)%Cloud(1)%Water_Content = cloudConcentration
-    atm(1)%Cloud_Fraction = cloudFraction
+    if( cloudsOn ) then
+        atm(1)%Cloud(1)%Type                = cloudType
+        atm(1)%Cloud(1)%Effective_Radius(:) = cloudEffectiveRadius(:)
+        atm(1)%Cloud(1)%Water_Content(:)    = cloudConcentration(:)
+        atm(1)%Cloud_Fraction(:)            = cloudFraction(:)
+    endif
 
     if(n_absorbers>2) then 
-        atm(1)%Absorber(:,3)     = co2ConcLayers
+        atm(1)%Absorber(:,3)      = co2ConcLayers
         atm(1)%Absorber_Id(3)     = CO2_ID
-        atm(1)%absorber_units(3) = VOLUME_MIXING_RATIO_UNITS
+        atm(1)%absorber_units(3)  = VOLUME_MIXING_RATIO_UNITS
     endif
 
     ! 6b. Geometry input
