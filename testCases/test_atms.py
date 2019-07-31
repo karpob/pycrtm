@@ -18,25 +18,25 @@ def main(coefficientPath, sensor_id):
         nChan = 22
         forwardTb, forwardTransmission,\
         forwardEmissivity = pycrtm.wrap_forward( coefficientPath, sensor_id,\
-                        h5['zenithAngle'].value, h5['scanAngle'].value, 999.9, h5['solarAngle'].value, nChan, \
+                        h5['zenithAngle'][()], h5['scanAngle'][()], 999.9, h5['solarAngle'][()], nChan, \
                         h5['pressureLevels'], h5['pressureLayers'], h5['temperatureLayers'], h5['humidityLayers'], h5['ozoneConcLayers'],\
                         h5['co2ConcLayers'],\
-                        h5['aerosolEffectiveRadius'], h5['aerosolConcentration'], h5['aerosolType'].value, \
-                        h5['cloudEffectiveRadius'], h5['cloudConcentration'], h5['cloudType'].value, h5['cloudFraction'], h5['climatology'].value, \
-                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'].value, salinity, h5['windSpeed10m'].value, h5['windDirection10m'].value, h5['n_absorbers'].value,\
-                        h5['landType'].value, h5['soilType'].value, h5['vegType'].value, h5['waterType'].value, h5['snowType'].value, h5['iceType'].value)
+                        h5['aerosolEffectiveRadius'], h5['aerosolConcentration'], h5['aerosolType'][()], \
+                        h5['cloudEffectiveRadius'], h5['cloudConcentration'], h5['cloudType'][()], h5['cloudFraction'], h5['climatology'][()], \
+                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, h5['windSpeed10m'][()], h5['windDirection10m'][()], h5['n_absorbers'][()],\
+                        h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()])
 
         kTb, kTransmission,\
         temperatureJacobian,\
         humidityJacobian,\
         ozoneJacobian, kEmissivity = pycrtm.wrap_k_matrix( coefficientPath, sensor_id,\
-                        h5['zenithAngle'].value, h5['scanAngle'].value, 999.9, h5['solarAngle'].value, nChan,\
+                        h5['zenithAngle'][()], h5['scanAngle'][()], 999.9, h5['solarAngle'][()], nChan,\
                         h5['pressureLevels'], h5['pressureLayers'], h5['temperatureLayers'], h5['humidityLayers'], h5['ozoneConcLayers'],\
                         h5['co2ConcLayers'],\
-                        h5['aerosolEffectiveRadius'], h5['aerosolConcentration'], h5['aerosolType'].value, \
-                        h5['cloudEffectiveRadius'], h5['cloudConcentration'], h5['cloudType'].value, h5['cloudFraction'], h5['climatology'].value, \
-                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'].value, salinity, h5['windSpeed10m'].value, h5['windDirection10m'].value, h5['n_absorbers'].value,\
-                        h5['landType'].value, h5['soilType'].value, h5['vegType'].value, h5['waterType'].value, h5['snowType'].value, h5['iceType'].value)
+                        h5['aerosolEffectiveRadius'], h5['aerosolConcentration'], h5['aerosolType'][()], \
+                        h5['cloudEffectiveRadius'], h5['cloudConcentration'], h5['cloudType'][()], h5['cloudFraction'], h5['climatology'][()], \
+                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, h5['windSpeed10m'][()], h5['windDirection10m'][()], h5['n_absorbers'][()],\
+                        h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()])
         
 
         wavenumbers = np.arange(22)
