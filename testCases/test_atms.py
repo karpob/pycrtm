@@ -43,7 +43,7 @@ def main(coefficientPath, sensor_id):
         diffK = kTb-h5['Tb_atms'][0:22]
         diffKemis = kEmissivity-h5['emissivity_atms'][0:22]
         
-        if ( all(np.abs(diffKemis) <= 0.0)  and all(np.abs(diffK) <= 0.0) ):
+        if ( all(np.abs(diffKemis) <= 1e-10)  and all(np.abs(diffK) <= 1e-10) ):
             print ("Yay! we duplicated results from CRTM test program!")
         else:
             plt.figure()
