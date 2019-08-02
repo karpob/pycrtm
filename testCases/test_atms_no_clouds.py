@@ -25,7 +25,7 @@ def main(coefficientPath, sensor_id):
                         h5['aerosolEffectiveRadius'], nans, h5['aerosolType'][()], \
                         h5['cloudEffectiveRadius'], nans, h5['cloudType'][()], h5['cloudFraction'], h5['climatology'][()], \
                         h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, h5['windSpeed10m'][()], h5['windDirection10m'][()], h5['n_absorbers'][()],\
-                        h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()])
+                        h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()], 1)
 
         kTb, kTransmission,\
         temperatureJacobian,\
@@ -37,30 +37,30 @@ def main(coefficientPath, sensor_id):
                         h5['aerosolEffectiveRadius'], nans, h5['aerosolType'][()], \
                         h5['cloudEffectiveRadius'], nans, h5['cloudType'][()], h5['cloudFraction'], h5['climatology'][()], \
                         h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, h5['windSpeed10m'][()], h5['windDirection10m'][()], h5['n_absorbers'][()],\
-                        h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()])
+                        h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()],1)
         
 
         wavenumbers = np.arange(22)
-        diffK = kTb-h5['Tb_atms'][0:22]
-        diffKemis = kEmissivity-h5['emissivity_atms'][0:22]
+        diffK = kTb.flatten()-h5['Tb_atms'][0:22]
+        diffKemis = kEmissivity.flatten()-h5['emissivity_atms'][0:22]
         
         if ( all(np.abs(diffKemis) <= 1e-10)  and all(np.abs(diffK) <= 1e-10) ):
             print ("Yay! we duplicated results from CRTM test program!")
         else:
             plt.figure()
-            plt.plot(wavenumbers,kTb-h5['Tb_atms'][0:22])
+            plt.plot(wavenumbers,diffK)
             plt.savefig(os.path.join(thisDir,c+'_spectrum_k_matrix.png'))
 
             plt.figure()
-            plt.plot(wavenumbers,kEmissivity-h5['emissivity_atms'][0:22])
+            plt.plot(wavenumbers,diffKemis)
             plt.savefig(os.path.join(thisDir,c+'_emissivity_k_matrix.png')) 
 
             plt.figure()
-            plt.plot(wavenumbers,forwardTb-h5['Tb_atms'][0:22])
+            plt.plot(wavenumbers,forwardTb.flatten()-h5['Tb_atms'][0:22])
             plt.savefig(os.path.join(thisDir,c+'_spectrum_forward.png'))
 
             plt.figure()
-            plt.plot(wavenumbers,forwardEmissivity-h5['emissivity_atms'][0:22])
+            plt.plot(wavenumbers,forwardEmissivity.flatten()-h5['emissivity_atms'][0:22])
             plt.savefig(os.path.join(thisDir,c+'_emissivity_forward.png')) 
             print("Boo! {} failed to pass a test. look at plots in {} for details.".format(c,thisDir) )
 

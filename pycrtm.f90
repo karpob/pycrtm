@@ -106,19 +106,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   ! STEP 4. **** INITIALIZE THE CRTM ****
   !
   ! 4a. Initialise all the sensors at once
-   err_stat = CRTM_Init( sensor_id,  chinfo, &
-                        File_Path=coefficientPath, &
-                        Load_CloudCoeff = cloudsOn, &  
-                        Load_AerosolCoeff = aerosolsOn, &  
-                        Quiet=.True. )
-
-  IF ( err_stat /= SUCCESS ) THEN
-    message = 'Error initializing CRTM'
-    CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-    STOP
-  END IF
-
- ! --------------------------------------
+  ! --------------------------------------
   ! Karpowicz addition... if we have less than -9999 for all concentrations, don't turn on aerosols/clouds.
   if( all(aerosolConcentration < -9999.0) ) then
     N_AEROSOLS = 0
@@ -136,6 +124,19 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     cloudsOn = .True. 
   endif
   ! End Karpowicz change to CRTM-style interface.
+
+   err_stat = CRTM_Init( sensor_id,  chinfo, &
+                        File_Path=coefficientPath, &
+                        Load_CloudCoeff = cloudsOn, &  
+                        Load_AerosolCoeff = aerosolsOn, &  
+                        Quiet=.True. )
+
+  IF ( err_stat /= SUCCESS ) THEN
+    message = 'Error initializing CRTM'
+    CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
+    STOP
+  END IF
+
 
   WRITE( *,'(/5x,"Initializing the CRTM...")' )
 
@@ -558,13 +559,39 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     
     ! 5b. Allocate the ARRAYS
     ! -----------------------
-    ALLOCATE( rts( n_channels, 1 ),    & 
-              atm_K( n_channels, 1 ), &
-              sfc_K( n_channels, 1 ), &
-              rts_K( n_channels, 1 ), &
-              STAT = alloc_stat )
-    IF ( alloc_stat /= 0 ) THEN
-      message = 'Error allocating structure arrays'
+!    ALLOCATE( rts( n_channels, 1 ),    & 
+!              atm_K( n_channels, 1 ), &
+!              sfc_K( n_channels, 1 ), &
+!              rts_K( n_channels, 1 ), &
+!              STAT = alloc_stat )
+    ALLOCATE( rts( n_channels, 1 ), STAT = alloc_stat )
+    IF (alloc_stat /= 0 ) THEN
+      message = 'Error allocating rts'
+      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
+      STOP
+    else 
+    END IF
+
+
+    ALLOCATE( atm_K( n_channels, 1 ), STAT = alloc_stat )
+    IF (alloc_stat /= 0 ) THEN
+      message = 'Error allocating atm_K'
+      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
+      STOP
+    END IF
+
+
+
+    ALLOCATE( sfc_K( n_channels, 1 ), STAT = alloc_stat )
+    IF (alloc_stat /= 0 ) THEN
+      message = 'Error allocating sfc_K'
+      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
+      STOP
+    END IF
+
+    ALLOCATE( rts_K( n_channels, 1 ), STAT = alloc_stat )
+    IF (alloc_stat /= 0 ) THEN
+      message = 'Error allocating rts_K'
       CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
       STOP
     END IF
@@ -692,14 +719,12 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
 
     ! ...Snow coverage characteristics
     sfc%Snow_Coverage    = surfaceFractions(3,n)
-    sfc%Snow_Type        = snowType !FRESH_SNOW_TYPE
+    sfc%Snow_Type        = snowType(n) !FRESH_SNOW_TYPE
     sfc%Snow_Temperature = surfaceTemperatures(3,n)
     ! ...Ice surface characteristics
     sfc%Ice_Coverage    = surfaceFractions(4,n)
-    sfc%Ice_Type        = iceType !FRESH_ICE_TYPE
+    sfc%Ice_Type        = iceType(n) !FRESH_ICE_TYPE
     sfc%Ice_Temperature = surfaceTemperatures(4,n)
-
-    
     ! ==========================================================================
     ! STEP 8. **** CALL THE CRTM FUNCTIONS FOR THE CURRENT SENSOR ****
     !
@@ -741,10 +766,10 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     CALL CRTM_Atmosphere_Destroy(atm)
     DEALLOCATE(atm_k, STAT = alloc_stat)
     DEALLOCATE(rts_K, sfc_k, STAT = alloc_stat)
+    DEALLOCATE(rts, STAT = alloc_stat)
     ! ==========================================================================
 
   END DO Profile_Loop
-  
   ! ==========================================================================
   ! 10. **** DESTROY THE CRTM ****
   !
