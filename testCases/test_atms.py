@@ -86,6 +86,7 @@ def main(coefficientPath, sensor_id):
         iceType.append(h5['iceType'][()])
     print("GO CRTM!")
     start = time.time()
+    """
     forwardTb, forwardTransmission,\
     forwardEmissivity = pycrtm.wrap_forward( coefficientPath, sensor_id,\
                         np.asarray(zenithAngle).T, np.asarray(scanAngle).T,np.asarray(azimuthAngle).T, np.asarray(solarAngle).T, nChan, \
@@ -95,6 +96,18 @@ def main(coefficientPath, sensor_id):
                         np.asarray(cloudEffectiveRadius).T, np.asarray(cloudConcentration).T, np.asarray(cloudType).T, np.asarray(cloudFraction).T, np.asarray(climatology).T, \
                         np.asarray(surfaceTemperatures).T, np.asarray(surfaceFractions).T, np.asarray(LAI), salinity*np.ones(len(LAI)), np.asarray(windSpeed).T, np.asarray(windDirection).T, np.asarray(n_absorbers).T,\
                         np.asarray(landType), np.asarray(soilType), np.asarray(vegType), np.asarray(waterType), np.asarray(snowType), np.asarray(iceType), 1)
+    """ 
+    kTb, kTransmission, temperatureJacobian, humidityJacobian, ozoneJacobian,\
+    kEmissivity = pycrtm.wrap_k_matrix( coefficientPath, sensor_id,\
+                        np.asarray(zenithAngle).T, np.asarray(scanAngle).T,np.asarray(azimuthAngle).T, np.asarray(solarAngle).T, nChan, \
+                        np.asarray(pressureLevels).T, np.asarray(pressureLayers).T, np.asarray(temperatureLayers).T, np.asarray(humidityLayers).T, np.asarray(ozoneConcLayers).T,\
+                        np.asarray(co2ConcLayers).T,\
+                        np.asarray(aerosolEffectiveRadius).T, np.asarray(aerosolConcentration).T, np.asarray(aerosolType).T, \
+                        np.asarray(cloudEffectiveRadius).T, np.asarray(cloudConcentration).T, np.asarray(cloudType).T, np.asarray(cloudFraction).T, np.asarray(climatology).T, \
+                        np.asarray(surfaceTemperatures).T, np.asarray(surfaceFractions).T, np.asarray(LAI), salinity*np.ones(len(LAI)), np.asarray(windSpeed).T, np.asarray(windDirection).T, np.asarray(n_absorbers).T,\
+                        np.asarray(landType), np.asarray(soilType), np.asarray(vegType), np.asarray(waterType), np.asarray(snowType), np.asarray(iceType), 1)
+ 
+
     end = time.time()
     print('pycrtm took',end-start)
     wavenumbers = np.linspace(1,23,22)
@@ -104,6 +117,16 @@ def main(coefficientPath, sensor_id):
     plt.figure()
     plt.plot(wavenumbers,forwardEmissivity)
     plt.savefig(os.path.join(thisDir,c+'_emissivity_forward.png')) 
+
+    wavenumbers = np.linspace(1,23,22)
+    plt.figure()
+    plt.plot(wavenumbers,kTb)
+    plt.savefig(os.path.join(thisDir,c+'_spectrum_k.png'))
+    plt.figure()
+    plt.plot(wavenumbers,kEmissivity)
+    plt.savefig(os.path.join(thisDir,c+'_emissivity_k.png')) 
+
+
 
 
 
