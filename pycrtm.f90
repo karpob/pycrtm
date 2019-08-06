@@ -504,7 +504,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     cloudsOn = .True. 
   endif
 
-  allocate(atm(1), sfc(1))
   WRITE( *,'(/5x,"Initializing the CRTM...")' )
  
  ! if aerosols or cloud concentrations specified as < -9999, don't load cloud/aerosol coefficients.
@@ -542,9 +541,21 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
 !      STOP
 !    END IF
  
-
   ! Begin loop over sensors
   ! ----------------------
+  !$ call omp_set_num_threads(nthreads)
+  !$omp parallel do default(firstprivate) shared(chinfo,emissivity,outTb,atm_k,rts_k)& 
+  !$omp& shared(temperatureJacobian,humidityJacobian,ozoneJacobian,outTransmission)&
+  !$omp& shared(zenithAngle, scanAngle, azimuthAngle, solarAngle)&
+  !$omp& shared(nChan, N_Profiles, N_LAYERS)&
+  !$omp& shared(pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers)& 
+  !$omp& shared(co2ConcLayers)& 
+  !$omp& shared(aerosolEffectiveRadius, aerosolConcentration, aerosolType)& 
+  !$omp& shared(cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology)& 
+  !$omp& shared(surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m, n_absorbers)& 
+  !$omp& shared(landType, soilType, vegType, waterType, snowType, iceType)&
+  !$omp& num_threads(nthreads) 
+ 
   Profile_Loop: DO n = 1, N_profiles
 
   
@@ -559,11 +570,15 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     
     ! 5b. Allocate the ARRAYS
     ! -----------------------
-!    ALLOCATE( rts( n_channels, 1 ),    & 
-!              atm_K( n_channels, 1 ), &
-!              sfc_K( n_channels, 1 ), &
-!              rts_K( n_channels, 1 ), &
-!              STAT = alloc_stat )
+    allocate(atm(1), sfc(1), STAT = alloc_stat)
+    IF (alloc_stat /= 0 ) THEN
+      message = 'Error allocating atm, sfc'
+      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
+      STOP
+    else 
+    END IF
+
+
     ALLOCATE( rts( n_channels, 1 ), STAT = alloc_stat )
     IF (alloc_stat /= 0 ) THEN
       message = 'Error allocating rts'
@@ -596,7 +611,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
       STOP
     END IF
 
-
     ! 5c. Allocate the STRUCTURE INTERNALS
     !     NOTE: Only the Atmosphere structures
     !           are allocated in this example
@@ -620,15 +634,16 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     call crtm_rtsolution_create( rts, n_layers )
     if ( any(.not. crtm_rtsolution_associated( rts )) ) then
         call display_message( subroutine_name, 'error allocating rts', err_stat)
-        return
+        !return
     end if
     
     call crtm_rtsolution_create( rts_k, n_layers )
     if ( any(.not. crtm_rtsolution_associated( rts_k )) ) then
         call display_message( subroutine_name, 'error allocating rts_k', err_stat)
-        return
+        !return
     end if
 
+    print *, 'sz',SIZE(atm), SIZE(sfc), SIZE(geo), Size(rts,dim=2), shape(atm_K),shape(rts_k) 
 
 
     ! ==========================================================================
@@ -730,6 +745,14 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     !
     ! 8b. The K-matrix model
     ! ----------------------
+    print *, 'hi.', n
+!    err_stat = CRTM_Forward( atm        , &  ! Input
+!                             sfc        , &  ! Input
+!                             geo        , &  ! Input
+!                             chinfo, &  ! Input
+!                             rts ) !,    & ! Output
+!    !                        options = options ) 
+! 
     err_stat = CRTM_K_Matrix( atm        , &  ! FORWARD  Input
                               sfc        , &  ! FORWARD  Input
                               rts_K      , &  ! K-MATRIX Input
@@ -738,11 +761,13 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
                               atm_K      , &  ! K-MATRIX Output
                               sfc_K      , &  ! K-MATRIX Output
                               rts          )  ! FORWARD  Output
-
+    
     IF ( err_stat /= SUCCESS ) THEN
       message = 'Error calling CRTM K-Matrix Model'
       CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
       STOP
+    else
+      print *, 'K matrix is still alive!'
     END IF
 
     ! ==========================================================================
@@ -755,21 +780,24 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! 9b. Deallocate the arrays
     ! -------------------------
     ! transfer jacobians out
-    do l=1,nChan
-        temperatureJacobian(l, 1:n_layers, n) = atm_k(l, 1)%Temperature(1:n_layers)
-        humidityJacobian(l, 1:n_layers, n) = atm_k(l, 1)%Absorber(1:n_layers, 1)
-        ozoneJacobian(l, 1:n_layers, n) = atm_k(l, 1)%Absorber(1:n_layers, 2)
-        outTransmission(l, 1:n_layers, n) = rts(l, 1)%Layer_Optical_Depth
-    enddo
+    print*,'whir',n
+    !do l=1,nChan
+    !    temperatureJacobian(l, 1:n_layers, n) = atm_k(l, 1)%Temperature(1:n_layers)
+    !    humidityJacobian(l, 1:n_layers, n) = atm_k(l, 1)%Absorber(1:n_layers, 1)
+    !    ozoneJacobian(l, 1:n_layers, n) = atm_k(l, 1)%Absorber(1:n_layers, 2)
+    !    outTransmission(l, 1:n_layers, n) = rts(l, 1)%Layer_Optical_Depth
+    !enddo
     outTb(:,n) = rts(:,1)%Brightness_Temperature 
     emissivity(:,n) = rts(:,1)%Surface_Emissivity
     CALL CRTM_Atmosphere_Destroy(atm)
     DEALLOCATE(atm_k, STAT = alloc_stat)
     DEALLOCATE(rts_K, sfc_k, STAT = alloc_stat)
     DEALLOCATE(rts, STAT = alloc_stat)
+    DEALLOCATE(atm, sfc, STAT = alloc_stat)
     ! ==========================================================================
 
   END DO Profile_Loop
+  !$omp end parallel do
   ! ==========================================================================
   ! 10. **** DESTROY THE CRTM ****
   !
