@@ -12,7 +12,7 @@ def main(coefficientPath, sensor_id):
     thisDir = os.path.dirname(os.path.abspath(__file__))
     cases = os.listdir( os.path.join(thisDir,'data') )
     cases.sort()
-    salinity = 35.0
+    salinity = 33.0
     zenithAngle = []
     azimuthAngle = []
     scanAngle = []
@@ -77,7 +77,7 @@ def main(coefficientPath, sensor_id):
         surfaceTemperatures.append(h5['surfaceTemperatures']) 
         surfaceFractions.append(h5['surfaceFractions'] ) 
         LAI.append(h5['LAI'][()])
-        windSpeed.append(h5['windSpeed10m'][()])
+        windSpeed.append(5.0)
         windDirection.append(h5['windDirection10m'][()])
         n_absorbers.append(h5['n_absorbers'][()])
         landType.append(h5['landType'][()])

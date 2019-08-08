@@ -267,12 +267,6 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     sfc%Water_Type        = waterType(n) !SEA_WATER_TYPE
     sfc%Water_Temperature = surfaceTemperatures(2,n)
 
-    if( windSpeed10m(n) > 0.0_fp ) then
-        Sfc%Wind_Direction = windDirection10m(n)
-        Sfc%Wind_Speed = windSpeed10m(n)
-        Sfc%Salinity = 0.0_fp
-    endif    
-
     ! ...Snow coverage characteristics
     sfc%Snow_Coverage    = surfaceFractions(3,n)
     sfc%Snow_Type        = snowType(n) !FRESH_SNOW_TYPE
@@ -723,12 +717,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     sfc%Water_Coverage    = surfaceFractions(2,n)
     sfc%Water_Type        = waterType(n) !SEA_WATER_TYPE
     sfc%Water_Temperature = surfaceTemperatures(2,n)
-
-    if( windSpeed10m(n) > 0.0_fp ) then
-        Sfc%Wind_Direction = windDirection10m(n)
-        Sfc%Wind_Speed = windSpeed10m(n)
-        Sfc%Salinity = salinity(n)
-    endif    
 
     ! ...Snow coverage characteristics
     sfc%Snow_Coverage    = surfaceFractions(3,n)
