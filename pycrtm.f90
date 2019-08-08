@@ -543,18 +543,19 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
  
   ! Begin loop over sensors
   ! ----------------------
-  !$ call omp_set_num_threads(nthreads)
-  !$omp parallel do default(firstprivate) shared(chinfo,emissivity,outTb,atm_k,rts_k)& 
-  !$omp& shared(temperatureJacobian,humidityJacobian,ozoneJacobian,outTransmission)&
-  !$omp& shared(zenithAngle, scanAngle, azimuthAngle, solarAngle)&
-  !$omp& shared(nChan, N_Profiles, N_LAYERS)&
-  !$omp& shared(pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers)& 
-  !$omp& shared(co2ConcLayers)& 
-  !$omp& shared(aerosolEffectiveRadius, aerosolConcentration, aerosolType)& 
-  !$omp& shared(cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology)& 
-  !$omp& shared(surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m, n_absorbers)& 
-  !$omp& shared(landType, soilType, vegType, waterType, snowType, iceType)&
-  !$omp& num_threads(nthreads) 
+  ! openmp won't work for K-matrix. Should be a fix in future release of CRTM. 
+  !!$ call omp_set_num_threads(nthreads)
+  !!$omp parallel do default(firstprivate) shared(chinfo,emissivity,outTb,atm_k,rts_k)& 
+  !!$omp& shared(temperatureJacobian,humidityJacobian,ozoneJacobian,outTransmission)&
+  !!$omp& shared(zenithAngle, scanAngle, azimuthAngle, solarAngle)&
+  !!$omp& shared(nChan, N_Profiles, N_LAYERS)&
+  !!$omp& shared(pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers)& 
+  !!$omp& shared(co2ConcLayers)& 
+  !!$omp& shared(aerosolEffectiveRadius, aerosolConcentration, aerosolType)& 
+  !!$omp& shared(cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology)& 
+  !!$omp& shared(surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m, n_absorbers)& 
+  !!$omp& shared(landType, soilType, vegType, waterType, snowType, iceType)&
+  !!$omp& num_threads(nthreads) 
  
   Profile_Loop: DO n = 1, N_profiles
 
@@ -642,9 +643,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
         call display_message( subroutine_name, 'error allocating rts_k', err_stat)
         !return
     end if
-
-    print *, 'sz',SIZE(atm), SIZE(sfc), SIZE(geo), Size(rts,dim=2), shape(atm_K),shape(rts_k) 
-
 
     ! ==========================================================================
     ! STEP 6. **** ASSIGN INPUT DATA ****
@@ -745,7 +743,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     !
     ! 8b. The K-matrix model
     ! ----------------------
-    print *, 'hi.', n
 !    err_stat = CRTM_Forward( atm        , &  ! Input
 !                             sfc        , &  ! Input
 !                             geo        , &  ! Input
@@ -766,8 +763,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
       message = 'Error calling CRTM K-Matrix Model'
       CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
       STOP
-    else
-      print *, 'K matrix is still alive!'
     END IF
 
     ! ==========================================================================
@@ -780,13 +775,12 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! 9b. Deallocate the arrays
     ! -------------------------
     ! transfer jacobians out
-    print*,'whir',n
-    !do l=1,nChan
-    !    temperatureJacobian(l, 1:n_layers, n) = atm_k(l, 1)%Temperature(1:n_layers)
-    !    humidityJacobian(l, 1:n_layers, n) = atm_k(l, 1)%Absorber(1:n_layers, 1)
-    !    ozoneJacobian(l, 1:n_layers, n) = atm_k(l, 1)%Absorber(1:n_layers, 2)
-    !    outTransmission(l, 1:n_layers, n) = rts(l, 1)%Layer_Optical_Depth
-    !enddo
+    do l=1,nChan
+        temperatureJacobian(l, 1:n_layers, n) = atm_k(l, 1)%Temperature(1:n_layers)
+        humidityJacobian(l, 1:n_layers, n) = atm_k(l, 1)%Absorber(1:n_layers, 1)
+        ozoneJacobian(l, 1:n_layers, n) = atm_k(l, 1)%Absorber(1:n_layers, 2)
+        outTransmission(l, 1:n_layers, n) = rts(l, 1)%Layer_Optical_Depth
+    enddo
     outTb(:,n) = rts(:,1)%Brightness_Temperature 
     emissivity(:,n) = rts(:,1)%Surface_Emissivity
     CALL CRTM_Atmosphere_Destroy(atm)
@@ -797,7 +791,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! ==========================================================================
 
   END DO Profile_Loop
-  !$omp end parallel do
+  !!$omp end parallel do
   ! ==========================================================================
   ! 10. **** DESTROY THE CRTM ****
   !

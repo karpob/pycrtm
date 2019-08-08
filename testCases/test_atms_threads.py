@@ -100,7 +100,7 @@ def main(coefficientPath, sensor_id):
                         np.asarray(surfaceTemperatures).T, np.asarray(surfaceFractions).T, np.asarray(LAI), salinity*np.ones(len(LAI)), np.asarray(windSpeed).T, np.asarray(windDirection).T, np.asarray(n_absorbers).T,\
                         np.asarray(landType), np.asarray(soilType), np.asarray(vegType), np.asarray(waterType), np.asarray(snowType), np.asarray(iceType), 10)
 
-    print("Running K Matrix with 2 threads")
+    print("Running K Matrix with 1 thread Can't do anthing else at the moment.")
     kTb, kTransmission, temperatureJacobian, humidityJacobian, ozoneJacobian,\
     kEmissivity = pycrtm.wrap_k_matrix( coefficientPath, sensor_id,\
                         np.asarray(zenithAngle).T, np.asarray(scanAngle).T,np.asarray(azimuthAngle).T, np.asarray(solarAngle).T, nChan, \
@@ -109,48 +109,34 @@ def main(coefficientPath, sensor_id):
                         np.asarray(aerosolEffectiveRadius).T, np.asarray(aerosolConcentration).T, np.asarray(aerosolType).T, \
                         np.asarray(cloudEffectiveRadius).T, np.asarray(cloudConcentration).T, np.asarray(cloudType).T, np.asarray(cloudFraction).T, np.asarray(climatology).T, \
                         np.asarray(surfaceTemperatures).T, np.asarray(surfaceFractions).T, np.asarray(LAI), salinity*np.ones(len(LAI)), np.asarray(windSpeed).T, np.asarray(windDirection).T, np.asarray(n_absorbers).T,\
-                        np.asarray(landType), np.asarray(soilType), np.asarray(vegType), np.asarray(waterType), np.asarray(snowType), np.asarray(iceType), 2)
+                        np.asarray(landType), np.asarray(soilType), np.asarray(vegType), np.asarray(waterType), np.asarray(snowType), np.asarray(iceType), 1)
  
 
     end = time.time()
     print('pycrtm took',end-start)
-    wavenumbers = np.linspace(1,23,22)
-    plt.figure()
-    plt.plot(wavenumbers,forwardTb-np.asarray(storedTb).T ) 
-    plt.savefig(os.path.join(thisDir,c+'_spectrum_forward.png'))
-    plt.figure()
-    plt.plot(wavenumbers,forwardEmissivity-np.asarray(storedEmis).T)
-    plt.savefig(os.path.join(thisDir,c+'_emissivity_forward.png')) 
 
-    wavenumbers = np.linspace(1,23,22)
-    plt.figure()
-    plt.plot(wavenumbers,kTb-np.asarray(storedTb).T)
-    plt.savefig(os.path.join(thisDir,c+'_spectrum_k.png'))
-    plt.figure()
-    plt.plot(wavenumbers,kEmissivity-np.asarray(storedEmis).T)
-    plt.savefig(os.path.join(thisDir,c+'_emissivity_k.png')) 
+    if ( all( np.abs( forwardTb.flatten() - np.asarray(storedTb).T.flatten() ) <= 1e-10)  and all( np.abs( kTb.flatten() - np.asarray(storedTb).T.flatten() ) <= 1e-10) ):
+        print("Yay! all values are close enough to what CRTM test program produced!")
+    else: 
+        print("Boo! something failed. Look at all_200 plots")
+        wavenumbers = np.linspace(1,23,22)
+        plt.figure()
+        plt.plot(wavenumbers,forwardTb-np.asarray(storedTb).T ) 
+        plt.savefig(os.path.join(thisDir,'all_200'+'_spectrum_forward.png'))
+        plt.figure()
+        plt.plot(wavenumbers,forwardEmissivity-np.asarray(storedEmis).T)
+        plt.savefig(os.path.join(thisDir,'all_200'+'_emissivity_forward.png')) 
+    
+        wavenumbers = np.linspace(1,23,22)
+        plt.figure()
+        plt.plot(wavenumbers,kTb-np.asarray(storedTb).T)
+        plt.savefig(os.path.join(thisDir,'all_200'+'_spectrum_k.png'))
+        plt.figure()
+        plt.plot(wavenumbers,kEmissivity-np.asarray(storedEmis).T)
+        plt.savefig(os.path.join(thisDir,'all_200'+'_emissivity_k.png')) 
+        sys.exit("Boo! didn't pass tolerance with CRTM test program.")
 
 
-
-"""
-
-        
-
-        wavenumbers = np.arange(22)
-        diffK = kTb-np.asarray('Tb_atms'][0:22]
-        diffKemis = kEmissivity-np.asarray('emissivity_atms'][0:22]
-        
-        if ( all(np.abs(diffKemis) <= 1e-10)  and all(np.abs(diffK) <= 1e-10) ):
-            print ("Yay! we duplicated results from CRTM test program!")
-        else:
-            plt.figure()
-            plt.plot(wavenumbers,kTb-np.asarray('Tb_atms'][0:22])
-            plt.savefig(os.path.join(thisDir,c+'_spectrum_k_matrix.png'))
-
-            plt.figure()
-            plt.plot(wavenumbers,kEmissivity-np.asarray('emissivity_atms'][0:22])
-            plt.savefig(os.path.join(thisDir,c+'_emissivity_k_matrix.png')) 
-"""
 if __name__ == "__main__":
     pathInfo = configparser.ConfigParser()
     pathInfo.read( os.path.join(parentDir,'crtm.cfg') ) 
