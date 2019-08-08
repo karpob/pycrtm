@@ -12,7 +12,7 @@ def main(coefficientPath, sensor_id):
     thisDir = os.path.dirname(os.path.abspath(__file__))
     cases = os.listdir( os.path.join(thisDir,'data') )
     cases.sort()
-    salinity = 35.0
+    salinity = 33.0
     for c in cases:
         h5 = h5py.File(os.path.join(thisDir, 'data',c) , 'r')
         nChan = 22
@@ -24,7 +24,7 @@ def main(coefficientPath, sensor_id):
                         h5['co2ConcLayers'],\
                         h5['aerosolEffectiveRadius'], nans, h5['aerosolType'][()], \
                         h5['cloudEffectiveRadius'], nans, h5['cloudType'][()], h5['cloudFraction'], h5['climatology'][()], \
-                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, h5['windSpeed10m'][()], h5['windDirection10m'][()], h5['n_absorbers'][()],\
+                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, 5.0, h5['windDirection10m'][()], h5['n_absorbers'][()],\
                         h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()], 1)
 
         kTb, kTransmission,\
@@ -36,7 +36,7 @@ def main(coefficientPath, sensor_id):
                         h5['co2ConcLayers'],\
                         h5['aerosolEffectiveRadius'], nans, h5['aerosolType'][()], \
                         h5['cloudEffectiveRadius'], nans, h5['cloudType'][()], h5['cloudFraction'], h5['climatology'][()], \
-                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, h5['windSpeed10m'][()], h5['windDirection10m'][()], h5['n_absorbers'][()],\
+                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, 5.0, h5['windDirection10m'][()], h5['n_absorbers'][()],\
                         h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()],1)
         
 

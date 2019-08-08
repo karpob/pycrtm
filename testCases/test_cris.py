@@ -9,7 +9,7 @@ sys.path.insert(0,parentDir)
 from pycrtm import pycrtm
 
 def main(coefficientPath, sensor_id):
-    salinity = 35.0
+    salinity = 33.0
     thisDir = os.path.dirname(os.path.abspath(__file__))
     cases = os.listdir( os.path.join(thisDir,'data') ) 
     cases.sort()
@@ -23,7 +23,7 @@ def main(coefficientPath, sensor_id):
                         h5['co2ConcLayers'],\
                         h5['aerosolEffectiveRadius'], h5['aerosolConcentration'], h5['aerosolType'][()], \
                         h5['cloudEffectiveRadius'], h5['cloudConcentration'], h5['cloudType'][()], h5['cloudFraction'], h5['climatology'][()], \
-                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, h5['windSpeed10m'][()], h5['windDirection10m'][()], h5['n_absorbers'][()],\
+                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, 5.0, h5['windDirection10m'][()], h5['n_absorbers'][()],\
                         h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()],1)
 
         kTb, kTransmission,\
@@ -35,7 +35,7 @@ def main(coefficientPath, sensor_id):
                         h5['co2ConcLayers'],\
                         h5['aerosolEffectiveRadius'], h5['aerosolConcentration'], h5['aerosolType'][()], \
                         h5['cloudEffectiveRadius'], h5['cloudConcentration'], h5['cloudType'][()], h5['cloudFraction'], h5['climatology'][()], \
-                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, h5['windSpeed10m'][()], h5['windDirection10m'][()], h5['n_absorbers'][()],\
+                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, 5.0, h5['windDirection10m'][()], h5['n_absorbers'][()],\
                         h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()],1)
         
 
@@ -43,7 +43,10 @@ def main(coefficientPath, sensor_id):
         diffK = kTb.flatten()-h5['Tb']
         diffKemis = kEmissivity.flatten()-h5['emissivity']
         
-        if ( all(np.abs(diffKemis) <= 1e-8)  and all(np.abs(diffK) <= 1e-8) ):
+        diff = forwardTb.flatten()-h5['Tb']
+        diffEmis = forwardEmissivity.flatten()-h5['emissivity']
+
+        if ( all(np.abs(diffKemis) <= 1e-8)  and all(np.abs(diffK) <= 1e-8) and  all(np.abs(diffEmis) <= 1e-8)  and all(np.abs(diff) <= 1e-8) ):
             print ("Yay! we duplicated results from CRTM test program!")
         else:
             h5wav = h5py.File(os.path.join(thisDir,'cris_wavenumbers.h5'),'r')
