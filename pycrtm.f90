@@ -27,7 +27,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   ! on the default Re (earth radius) and h (satellite height)
   integer, intent(in) :: nChan, N_Profiles, N_Layers
   real(kind=8), intent(in) :: zenithAngle(n_profiles), scanAngle(n_profiles) 
-  real(kind=8), intent(in) :: azimuthAngle(n_profiles), solarAngle(n_profiles)
+  real(kind=8), intent(in) :: azimuthAngle(n_profiles), solarAngle(2,n_profiles)
   real(kind=8), intent(in) :: pressureLevels(N_LAYERS+1, N_Profiles)
   real(kind=8), intent(in) :: pressureLayers(N_LAYERS, N_Profiles), temperatureLayers(N_LAYERS, N_Profiles)
   real(kind=8), intent(in) ::humidityLayers(N_LAYERS,N_Profiles), ozoneConcLayers(N_LAYERS, N_Profiles)
@@ -243,11 +243,12 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
 
     ! 6b. Geometry input
     ! ------------------
-    
     CALL CRTM_Geometry_SetValue( geo, &
-                                 Sensor_Zenith_Angle = zenithAngle(n), &
-                                 Sensor_Scan_Angle   = scanAngle(n),   & 
-                                 Sensor_Azimuth_Angle = azimuthAngle(n) )
+                                 Sensor_Zenith_Angle  = zenithAngle(n),   &
+                                 Sensor_Scan_Angle    = scanAngle(n),     & 
+                                 Sensor_Azimuth_Angle = azimuthAngle(n),  &  
+                                 Source_Zenith_Angle  = solarAngle(1,n),  & 
+                                 Source_Azimuth_Angle = solarAngle(2,n) )
     !print *, atm(1)%Temperature
     !geo%Sensor_Zenith_Angle = zenithAngle(n)
     !geo%Sensor_Scan_Angle = scanAngle(n)
@@ -397,7 +398,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
   real(kind=8), intent(in) :: zenithAngle(N_profiles), scanAngle(N_profiles)
-  real(kind=8), intent(in) :: azimuthAngle(N_profiles), solarAngle(N_profiles)
+  real(kind=8), intent(in) :: azimuthAngle(N_profiles), solarAngle(2,N_profiles)
   real(kind=8), intent(in) :: pressureLevels(N_LAYERS+1, N_profiles)
   real(kind=8), intent(in) :: pressureLayers(N_LAYERS, N_profiles), temperatureLayers(N_LAYERS, N_profiles)
   real(kind=8), intent(in) :: humidityLayers(N_LAYERS, N_profiles)
@@ -679,10 +680,12 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! ------------------
     ! All profiles are given the same value
     CALL CRTM_Geometry_SetValue( geo, &
-                                 Sensor_Zenith_Angle = zenithAngle(n), &
-                                 Sensor_Scan_Angle   = scanAngle(n),   & 
-                                 Sensor_Azimuth_Angle = azimuthAngle(n) )
-
+                                 Sensor_Zenith_Angle  = zenithAngle(n),   &
+                                 Sensor_Scan_Angle    = scanAngle(n),     & 
+                                 Sensor_Azimuth_Angle = azimuthAngle(n),  &  
+                                 Source_Zenith_Angle  = solarAngle(1,n),  & 
+                                 Source_Azimuth_Angle = solarAngle(2,n) )
+ 
     ! ==========================================================================
 
 
