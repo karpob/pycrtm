@@ -59,7 +59,7 @@ def main(coefficientPath, sensor_id):
         zenithAngle.append(h5['zenithAngle'][()])
         scanAngle.append(h5['scanAngle'][()])
         azimuthAngle.append( 999.9), 
-        solarAngle.append(h5['solarAngle'][()])
+        solarAngle.append(np.asarray([100.0,0.0]))
         pressureLevels.append(h5['pressureLevels'])
         pressureLayers.append(h5['pressureLayers'])
         temperatureLayers.append(h5['temperatureLayers']) 
