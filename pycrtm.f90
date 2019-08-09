@@ -2,7 +2,7 @@ module pycrtm
 contains
 subroutine wrap_forward( coefficientPath, sensor_id_in, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, &
-                        nChan, N_Profiles, N_LAYERS, &
+                        nChan, N_Profiles, N_LAYERS, N_aerosols, N_clouds, &
                         pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
                         co2ConcLayers, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
@@ -25,17 +25,19 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   character(len=*), intent(in) :: sensor_id_in
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
-  integer, intent(in) :: nChan, N_Profiles, N_Layers
+  integer, intent(in) :: nChan, N_Profiles, N_Layers, N_aerosols, N_clouds
   real(kind=8), intent(in) :: zenithAngle(n_profiles), scanAngle(n_profiles) 
   real(kind=8), intent(in) :: azimuthAngle(n_profiles), solarAngle(2,n_profiles)
   real(kind=8), intent(in) :: pressureLevels(N_LAYERS+1, N_Profiles)
   real(kind=8), intent(in) :: pressureLayers(N_LAYERS, N_Profiles), temperatureLayers(N_LAYERS, N_Profiles)
   real(kind=8), intent(in) ::humidityLayers(N_LAYERS,N_Profiles), ozoneConcLayers(N_LAYERS, N_Profiles)
   real(kind=8), intent(in) :: co2ConcLayers(N_LAYERS, N_Profiles)
-  real(kind=8), intent(in) :: aerosolEffectiveRadius(N_LAYERS, N_Profiles), aerosolConcentration(N_LAYERS, N_Profiles)
-  real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS, N_Profiles), cloudConcentration(N_LAYERS, N_Profiles) 
+  real(kind=8), intent(in) :: aerosolEffectiveRadius(N_LAYERS, N_Profiles, N_aerosols)
+  real(kind=8), intent(in) :: aerosolConcentration(N_LAYERS, N_Profiles, N_aerosols)
+  real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS, N_Profiles, N_clouds)
+  real(kind=8), intent(in) :: cloudConcentration(N_LAYERS, N_Profiles, N_clouds) 
   real(kind=8), intent(in) :: cloudFraction(N_LAYERS, N_Profiles)
-  integer, intent(in) :: aerosolType(N_Profiles), cloudType(N_Profiles)
+  integer, intent(in) :: aerosolType(N_Profiles, N_aerosols), cloudType(N_Profiles, N_clouds)
   integer, intent(in) :: n_absorbers(N_Profiles), climatology(N_profiles)
   real(kind=8), intent(in) :: surfaceTemperatures(4, N_Profiles), surfaceFractions(4, N_Profiles)
   real(kind=8), intent(in) :: LAI(N_Profiles), salinity(N_Profiles),  windSpeed10m(N_Profiles), windDirection10m(N_Profiles)
@@ -57,12 +59,6 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   ! ============================================================================
   ! STEP 2. **** SET UP SOME PARAMETERS FOR THE CRTM RUN ****
   !
-  ! Directory location of coefficients
-
-  ! Profile dimensions
-  INTEGER :: N_CLOUDS
-  INTEGER :: N_AEROSOLS
-  
   ! Sensor information
   INTEGER     , PARAMETER :: N_SENSORS = 1
   ! ============================================================================
@@ -74,8 +70,8 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   ! ---------
   CHARACTER(256) :: message, version
   INTEGER :: err_stat, alloc_stat
-  INTEGER :: n_channels
-  INTEGER :: i, l, m, n, nc, ll,mm, nn
+  INTEGER :: n_channels, N_clouds_crtm, N_aerosols_crtm
+  INTEGER :: i, l, m, n, nc, ll,mm, nn, species
   real, dimension(n_layers,nchan) :: outTau
   logical :: cloudsOn, aerosolsOn
 
@@ -109,18 +105,18 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   ! --------------------------------------
   ! Karpowicz addition... if we have less than -9999 for all concentrations, don't turn on aerosols/clouds.
   if( all(aerosolConcentration < -9999.0) ) then
-    N_AEROSOLS = 0
+    N_AEROSOLS_crtm = 0
     aerosolsOn = .False.
   else
-    N_AEROSOLS = 1
+    N_AEROSOLS_crtm = N_aerosols
     aerosolsOn = .True. 
   endif
 
   if( all(cloudConcentration < -9999.0) ) then
-    N_CLOUDS = 0
+    N_CLOUDS_crtm = 0
     cloudsOn = .False.
   else
-    N_CLOUDS = 1
+    N_CLOUDS_crtm = N_clouds
     cloudsOn = .True. 
   endif
   ! End Karpowicz change to CRTM-style interface.
@@ -194,7 +190,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! ----------------------------------------
     ! The input FORWARD structure
     
-    CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_ABSORBERS(n), N_CLOUDS, N_AEROSOLS )
+    CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_ABSORBERS(n), N_CLOUDS_crtm, N_AEROSOLS_crtm )
     IF ( ANY (.NOT. CRTM_Atmosphere_Associated(atm)) ) THEN
       message = 'Error allocating CRTM Forward Atmosphere structure'
       CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
@@ -222,15 +218,19 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     atm(1)%Absorber(:,2) = ozoneConcLayers(:,n)
 
     if( aerosolsOn )  then
-      atm(1)%Aerosol(1)%Type                = aerosolType(n)
-      atm(1)%Aerosol(1)%Effective_Radius(:) = aerosolEffectiveRadius(:,n)
-      atm(1)%Aerosol(1)%Concentration(:)    = aerosolConcentration(:,n)
+      do species = 1, N_aerosols
+        atm(1)%Aerosol(species)%Type                = aerosolType(n, species)
+        atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius(:,n, species)
+        atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(:,n, species)
+      enddo
     endif
 
     if( cloudsOn ) then
-      atm(1)%Cloud(1)%Type                = cloudType(n)
-      atm(1)%Cloud(1)%Effective_Radius(:) = cloudEffectiveRadius(:,n)
-      atm(1)%Cloud(1)%Water_Content(:)    = cloudConcentration(:,n)
+      do species = 1, N_clouds
+        atm(1)%Cloud(species)%Type                = cloudType(n, species)
+        atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(:, n, species)
+        atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(:,n, species)
+      enddo
       atm(1)%Cloud_Fraction(:)            = cloudFraction(:,n)
     endif
 
@@ -364,7 +364,7 @@ end subroutine wrap_forward
 
 subroutine wrap_k_matrix( coefficientPath, sensor_id_in, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, &  
-                        nChan, N_profiles, N_LAYERS, & 
+                        nChan, N_profiles, N_LAYERS, N_aerosols, N_clouds, & 
                         pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
                         co2ConcLayers, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
@@ -394,7 +394,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   ! variables for interface
   character(len=1024), intent(in) :: coefficientPath
   character(len=*), intent(in) :: sensor_id_in
-  integer, intent(in) :: nChan, N_profiles, N_Layers 
+  integer, intent(in) :: nChan, N_profiles, N_Layers, N_aerosols, N_clouds 
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
   real(kind=8), intent(in) :: zenithAngle(N_profiles), scanAngle(N_profiles)
@@ -404,10 +404,12 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   real(kind=8), intent(in) :: humidityLayers(N_LAYERS, N_profiles)
   real(kind=8), intent(in) :: ozoneConcLayers(N_LAYERS, N_profiles)
   real(kind=8), intent(in) :: co2ConcLayers(N_LAYERS, N_profiles)
-  real(kind=8), intent(in) :: aerosolEffectiveRadius(N_LAYERS, N_profiles), aerosolConcentration(N_LAYERS, N_profiles)
-  real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS, N_profiles) 
-  real(kind=8), intent(in) :: cloudConcentration(N_LAYERS, N_profiles), cloudFraction(N_LAYERS,N_profiles)
-  integer, intent(in) :: aerosolType(N_profiles), cloudType(N_profiles), n_absorbers(N_profiles), climatology(N_profiles)
+  real(kind=8), intent(in) :: aerosolEffectiveRadius(N_LAYERS, N_profiles, N_aerosols)
+  real(kind=8), intent(in) :: aerosolConcentration(N_LAYERS, N_profiles, N_aerosols)
+  real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS, N_profiles, N_clouds) 
+  real(kind=8), intent(in) :: cloudConcentration(N_LAYERS, N_profiles, N_clouds), cloudFraction(N_LAYERS, N_profiles)
+  integer, intent(in) :: aerosolType(N_profiles, N_aerosols), cloudType(N_profiles, N_clouds)
+  integer, intent(in) :: n_absorbers(N_profiles), climatology(N_profiles)
   real(kind=8), intent(in) :: surfaceTemperatures(4, N_profiles), surfaceFractions(4, N_profiles), LAI(N_profiles) 
   real(kind=8), intent(in) :: salinity(N_profiles), windSpeed10m(N_profiles), windDirection10m(N_profiles)
   integer, intent(in) :: landType(N_profiles), soilType(N_profiles), vegType(N_profiles), waterType(N_profiles) 
@@ -424,11 +426,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   ! ============================================================================
   ! STEP 2. **** SET UP SOME PARAMETERS FOR THE CRTM RUN ****
   !
-  ! Directory location of coefficients
-
-  ! Profile dimensions
-  INTEGER :: N_CLOUDS 
-  INTEGER :: N_AEROSOLS
   
   ! Sensor information
   INTEGER     , PARAMETER :: N_SENSORS = 1
@@ -441,8 +438,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   ! ---------
   CHARACTER(256) :: message, version
   INTEGER :: err_stat, alloc_stat
-  INTEGER :: n_channels
-  INTEGER :: l, m, n, nc
+  INTEGER :: n_channels, N_aerosols_crtm, N_clouds_crtm
+  INTEGER :: l, m, n, nc, species
   Logical :: cloudsOn, aerosolsOn
 
 
@@ -484,18 +481,18 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   ! 4a. Initialise all the sensors at once
   ! --------------------------------------
   if( all(aerosolConcentration < -9999.0) ) then
-    N_AEROSOLS = 0
+    N_AEROSOLS_crtm = 0
     aerosolsOn = .False.
   else
-    N_AEROSOLS = 1
+    N_AEROSOLS_crtm = N_aerosols
     aerosolsOn = .True. 
   endif
 
   if( all(cloudConcentration < -9999.0) ) then
-    N_CLOUDS = 0
+    N_CLOUDS_crtm = 0
     cloudsOn = .False.
   else
-    N_CLOUDS = 1
+    N_CLOUDS_crtm = N_clouds
     cloudsOn = .True. 
   endif
 
@@ -612,7 +609,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     !           are allocated in this example
     ! ----------------------------------------
     ! The input FORWARD structure
-    CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_ABSORBERS(n), N_CLOUDS, N_AEROSOLS )
+    CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_ABSORBERS(n), N_CLOUDS_crtm, N_AEROSOLS_crtm )
     IF ( ANY(.NOT. CRTM_Atmosphere_Associated(atm)) ) THEN
       message = 'Error allocating CRTM Forward Atmosphere structure'
       CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
@@ -620,7 +617,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     END IF
 
     ! The output K-MATRIX structure
-    CALL CRTM_Atmosphere_Create( atm_K, N_LAYERS, N_ABSORBERS(n), N_CLOUDS, N_AEROSOLS )
+    CALL CRTM_Atmosphere_Create( atm_K, N_LAYERS, N_ABSORBERS(n), N_CLOUDS_crtm, N_AEROSOLS_crtm )
     IF ( ANY(.NOT. CRTM_Atmosphere_Associated(atm_K)) ) THEN
       message = 'Error allocating CRTM K-matrix Atmosphere structure'
       CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
@@ -658,16 +655,21 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     atm(1)%Absorber(:,1) = humidityLayers(:,n)
     atm(1)%Absorber(:,2) = ozoneConcLayers(:,n)
     if( aerosolsOn )  then
-        atm(1)%Aerosol(1)%Type                = aerosolType(n)
-        atm(1)%Aerosol(1)%Effective_Radius(:) = aerosolEffectiveRadius(:, n)
-        atm(1)%Aerosol(1)%Concentration(:)    = aerosolConcentration(:, n)
+        do species = 1,N_aerosols
+            atm(1)%Aerosol(species)%Type                = aerosolType(n,species)
+            atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius(:, n, species)
+            atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(:, n, species)
+        enddo
     endif
 
     if( cloudsOn ) then
-        atm(1)%Cloud(1)%Type                = cloudType(n)
-        atm(1)%Cloud(1)%Effective_Radius(:) = cloudEffectiveRadius(:, n)
-        atm(1)%Cloud(1)%Water_Content(:)    = cloudConcentration(:, n)
+        do species = 1,N_clouds
+            atm(1)%Cloud(species)%Type                = cloudType(n, species)
+            atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(:, n, species)
+            atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(:, n, species)
+        enddo
         atm(1)%Cloud_Fraction(:)            = cloudFraction(:, n)
+    
     endif
 
     if( n_absorbers(n) > 2 ) then 
