@@ -4,90 +4,98 @@
 python module pycrtm ! in 
     interface  ! in :pycrtm
         module pycrtm ! in :pycrtm:pycrtm.f90
-            subroutine wrap_forward(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_layers,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,cloudfraction,climatology,surfacetemperatures,surfacefractions,lai,salinity,windspeed10m,winddirection10m,n_absorbers,landtype,soiltype,vegtype,watertype,snowtype,icetype,outtb,outtransmission,emissivity) ! in :pycrtm:pycrtm.f90:pycrtm
+            subroutine wrap_forward(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_profiles,n_layers,n_aerosols,n_clouds,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,cloudfraction,climatology,surfacetemperatures,surfacefractions,lai,salinity,windspeed10m,winddirection10m,n_absorbers,landtype,soiltype,vegtype,watertype,snowtype,icetype,nthreads,outtb,outtransmission,emissivity) ! in :pycrtm:pycrtm.f90:pycrtm
                 use crtm_module
                 character*(*) intent(in) :: coefficientpath
                 character*(*) intent(in) :: sensor_id_in
-                real(kind=8) intent(in) :: zenithangle
-                real(kind=8) intent(in) :: scanangle
-                real(kind=8) intent(in) :: azimuthangle
-                real(kind=8) intent(in) :: solarangle
+                real(kind=8) dimension(n_profiles),intent(in) :: zenithangle
+                real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: scanangle
+                real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: azimuthangle
+                real(kind=8) dimension(2,n_profiles),intent(in),depend(n_profiles) :: solarangle
                 integer intent(in) :: nchan
-                integer, optional,intent(in),check((len(pressurelevels)-1)>=n_layers),depend(pressurelevels) :: n_layers=(len(pressurelevels)-1)
-                real(kind=8) dimension(n_layers + 1),intent(in) :: pressurelevels
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: pressurelayers
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: temperaturelayers
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: humiditylayers
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: ozoneconclayers
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: co2conclayers
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: aerosoleffectiveradius
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: aerosolconcentration
-                integer intent(in) :: aerosoltype
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: cloudeffectiveradius
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: cloudconcentration
-                integer intent(in) :: cloudtype
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: cloudfraction
-                integer intent(in) :: climatology
-                real(kind=8) dimension(4),intent(in) :: surfacetemperatures
-                real(kind=8) dimension(4),intent(in) :: surfacefractions
-                real(kind=8) intent(in) :: lai
-                real(kind=8) intent(in) :: salinity
-                real(kind=8) intent(in) :: windspeed10m
-                real(kind=8) intent(in) :: winddirection10m
-                integer intent(in) :: n_absorbers
-                integer intent(in) :: landtype
-                integer intent(in) :: soiltype
-                integer intent(in) :: vegtype
-                integer intent(in) :: watertype
-                integer intent(in) :: snowtype
-                integer intent(in) :: icetype
-                real(kind=8) dimension(nchan),intent(out),depend(nchan) :: outtb
-                real(kind=8) dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: outtransmission
-                real(kind=8) dimension(nchan),intent(out),depend(nchan) :: emissivity
+                integer, optional,intent(in),check(len(zenithangle)>=n_profiles),depend(zenithangle) :: n_profiles=len(zenithangle)
+                integer, optional,intent(in),check((shape(pressurelevels,0)-1)==n_layers),depend(pressurelevels) :: n_layers=(shape(pressurelevels,0)-1)
+                integer, optional,intent(in),check(shape(aerosoleffectiveradius,2)==n_aerosols),depend(aerosoleffectiveradius) :: n_aerosols=shape(aerosoleffectiveradius,2)
+                integer, optional,intent(in),check(shape(cloudeffectiveradius,2)==n_clouds),depend(cloudeffectiveradius) :: n_clouds=shape(cloudeffectiveradius,2)
+                real(kind=8) dimension(n_layers + 1,n_profiles),intent(in),depend(n_profiles) :: pressurelevels
+                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: pressurelayers
+                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: temperaturelayers
+                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: humiditylayers
+                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: ozoneconclayers
+                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: co2conclayers
+                real(kind=8) dimension(n_layers,n_profiles,n_aerosols),intent(in),depend(n_layers,n_profiles) :: aerosoleffectiveradius
+                real(kind=8) dimension(n_layers,n_profiles,n_aerosols),intent(in),depend(n_layers,n_profiles,n_aerosols) :: aerosolconcentration
+                integer dimension(n_profiles,n_aerosols),intent(in),depend(n_profiles,n_aerosols) :: aerosoltype
+                real(kind=8) dimension(n_layers,n_profiles,n_clouds),intent(in),depend(n_layers,n_profiles) :: cloudeffectiveradius
+                real(kind=8) dimension(n_layers,n_profiles,n_clouds),intent(in),depend(n_layers,n_profiles,n_clouds) :: cloudconcentration
+                integer dimension(n_profiles,n_clouds),intent(in),depend(n_profiles,n_clouds) :: cloudtype
+                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: cloudfraction
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: climatology
+                real(kind=8) dimension(4,n_profiles),intent(in),depend(n_profiles) :: surfacetemperatures
+                real(kind=8) dimension(4,n_profiles),intent(in),depend(n_profiles) :: surfacefractions
+                real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: lai
+                real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: salinity
+                real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: windspeed10m
+                real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: winddirection10m
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: n_absorbers
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: landtype
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: soiltype
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: vegtype
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: watertype
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: snowtype
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: icetype
+                integer intent(in) :: nthreads
+                real(kind=8) dimension(nchan,n_profiles),intent(out),depend(nchan,n_profiles) :: outtb
+                real(kind=8) dimension(nchan,n_layers,n_profiles),intent(out),depend(nchan,n_layers,n_profiles) :: outtransmission
+                real(kind=8) dimension(nchan,n_profiles),intent(out),depend(nchan,n_profiles) :: emissivity
             end subroutine wrap_forward
-            subroutine wrap_k_matrix(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_layers,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,cloudfraction,climatology,surfacetemperatures,surfacefractions,lai,salinity,windspeed10m,winddirection10m,n_absorbers,landtype,soiltype,vegtype,watertype,snowtype,icetype,outtb,outtransmission,temperaturejacobian,humidityjacobian,ozonejacobian,emissivity) ! in :pycrtm:pycrtm.f90:pycrtm
+            subroutine wrap_k_matrix(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,nchan,n_profiles,n_layers,n_aerosols,n_clouds,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,cloudfraction,climatology,surfacetemperatures,surfacefractions,lai,salinity,windspeed10m,winddirection10m,n_absorbers,landtype,soiltype,vegtype,watertype,snowtype,icetype,outtb,outtransmission,temperaturejacobian,humidityjacobian,ozonejacobian,emissivity,nthreads) ! in :pycrtm:pycrtm.f90:pycrtm
                 use crtm_module
                 character*1024 intent(in) :: coefficientpath
                 character*(*) intent(in) :: sensor_id_in
-                real(kind=8) intent(in) :: zenithangle
-                real(kind=8) intent(in) :: scanangle
-                real(kind=8) intent(in) :: azimuthangle
-                real(kind=8) intent(in) :: solarangle
+                real(kind=8) dimension(n_profiles),intent(in) :: zenithangle
+                real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: scanangle
+                real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: azimuthangle
+                real(kind=8) dimension(2,n_profiles),intent(in),depend(n_profiles) :: solarangle
                 integer intent(in) :: nchan
-                integer, optional,intent(in),check((len(pressurelevels)-1)>=n_layers),depend(pressurelevels) :: n_layers=(len(pressurelevels)-1)
-                real(kind=8) dimension(n_layers + 1),intent(in) :: pressurelevels
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: pressurelayers
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: temperaturelayers
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: humiditylayers
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: ozoneconclayers
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: co2conclayers
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: aerosoleffectiveradius
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: aerosolconcentration
-                integer intent(in) :: aerosoltype
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: cloudeffectiveradius
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: cloudconcentration
-                integer intent(in) :: cloudtype
-                real(kind=8) dimension(n_layers),intent(in),depend(n_layers) :: cloudfraction
-                integer intent(in) :: climatology
-                real(kind=8) dimension(4),intent(in) :: surfacetemperatures
-                real(kind=8) dimension(4),intent(in) :: surfacefractions
-                real(kind=8) intent(in) :: lai
-                real(kind=8) intent(in) :: salinity
-                real(kind=8) intent(in) :: windspeed10m
-                real(kind=8) intent(in) :: winddirection10m
-                integer intent(in) :: n_absorbers
-                integer intent(in) :: landtype
-                integer intent(in) :: soiltype
-                integer intent(in) :: vegtype
-                integer intent(in) :: watertype
-                integer intent(in) :: snowtype
-                integer intent(in) :: icetype
-                real(kind=8) dimension(nchan),intent(out),depend(nchan) :: outtb
-                real(kind=8) dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: outtransmission
-                real(kind=8) dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: temperaturejacobian
-                real(kind=8) dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: humidityjacobian
-                real(kind=8) dimension(nchan,n_layers),intent(out),depend(nchan,n_layers) :: ozonejacobian
-                real(kind=8) dimension(nchan),intent(out),depend(nchan) :: emissivity
+                integer, optional,intent(in),check(len(zenithangle)>=n_profiles),depend(zenithangle) :: n_profiles=len(zenithangle)
+                integer, optional,intent(in),check((shape(pressurelevels,0)-1)==n_layers),depend(pressurelevels) :: n_layers=(shape(pressurelevels,0)-1)
+                integer, optional,intent(in),check(shape(aerosoleffectiveradius,2)==n_aerosols),depend(aerosoleffectiveradius) :: n_aerosols=shape(aerosoleffectiveradius,2)
+                integer, optional,intent(in),check(shape(cloudeffectiveradius,2)==n_clouds),depend(cloudeffectiveradius) :: n_clouds=shape(cloudeffectiveradius,2)
+                real(kind=8) dimension(n_layers + 1,n_profiles),intent(in),depend(n_profiles) :: pressurelevels
+                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: pressurelayers
+                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: temperaturelayers
+                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: humiditylayers
+                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: ozoneconclayers
+                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: co2conclayers
+                real(kind=8) dimension(n_layers,n_profiles,n_aerosols),intent(in),depend(n_layers,n_profiles) :: aerosoleffectiveradius
+                real(kind=8) dimension(n_layers,n_profiles,n_aerosols),intent(in),depend(n_layers,n_profiles,n_aerosols) :: aerosolconcentration
+                integer dimension(n_profiles,n_aerosols),intent(in),depend(n_profiles,n_aerosols) :: aerosoltype
+                real(kind=8) dimension(n_layers,n_profiles,n_clouds),intent(in),depend(n_layers,n_profiles) :: cloudeffectiveradius
+                real(kind=8) dimension(n_layers,n_profiles,n_clouds),intent(in),depend(n_layers,n_profiles,n_clouds) :: cloudconcentration
+                integer dimension(n_profiles,n_clouds),intent(in),depend(n_profiles,n_clouds) :: cloudtype
+                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: cloudfraction
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: climatology
+                real(kind=8) dimension(4,n_profiles),intent(in),depend(n_profiles) :: surfacetemperatures
+                real(kind=8) dimension(4,n_profiles),intent(in),depend(n_profiles) :: surfacefractions
+                real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: lai
+                real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: salinity
+                real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: windspeed10m
+                real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: winddirection10m
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: n_absorbers
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: landtype
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: soiltype
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: vegtype
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: watertype
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: snowtype
+                integer dimension(n_profiles),intent(in),depend(n_profiles) :: icetype
+                real(kind=8) dimension(nchan,n_profiles),intent(out),depend(nchan,n_profiles) :: outtb
+                real(kind=8) dimension(nchan,n_layers,n_profiles),intent(out),depend(nchan,n_layers,n_profiles) :: outtransmission
+                real(kind=8) dimension(nchan,n_layers,n_profiles),intent(out),depend(nchan,n_layers,n_profiles) :: temperaturejacobian
+                real(kind=8) dimension(nchan,n_layers,n_profiles),intent(out),depend(nchan,n_layers,n_profiles) :: humidityjacobian
+                real(kind=8) dimension(nchan,n_layers,n_profiles),intent(out),depend(nchan,n_layers,n_profiles) :: ozonejacobian
+                real(kind=8) dimension(nchan,n_profiles),intent(out),depend(nchan,n_profiles) :: emissivity
+                integer intent(in) :: nthreads
             end subroutine wrap_k_matrix
         end module pycrtm
     end interface 
