@@ -47,7 +47,6 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   real(kind=8), intent(out) :: outTb(nChan, N_Profiles), emissivity(nChan, N_Profiles)
   real(kind=8), intent(out) :: outTransmission(nChan, N_LAYERS, N_Profiles)
   character(len=256), dimension(1) :: sensor_id
-
   ! --------------------------
   ! Some non-CRTM-y Parameters
   ! --------------------------
@@ -103,8 +102,8 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   !
   ! 4a. Initialise all the sensors at once
   ! --------------------------------------
-  ! Karpowicz addition... if we have less than -9999 for all concentrations, don't turn on aerosols/clouds.
-  if( all(aerosolConcentration < -9999.0) ) then
+  ! Karpowicz addition... if we have less than 0 for aerosol/cloud, don't turn on aerosols/clouds.
+  if( all(aerosolType < 0) ) then
     N_AEROSOLS_crtm = 0
     aerosolsOn = .False.
   else
@@ -112,7 +111,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     aerosolsOn = .True. 
   endif
 
-  if( all(cloudConcentration < -9999.0) ) then
+  if( all(cloudType < 0) ) then
     N_CLOUDS_crtm = 0
     cloudsOn = .False.
   else
@@ -166,7 +165,6 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
       CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
       STOP
     END IF
- 
 
   ! Begin loop over profile
   ! ----------------------
@@ -216,7 +214,6 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     atm(1)%Temperature = temperatureLayers(:,n)
     atm(1)%Absorber(:,1) = humidityLayers(:,n)
     atm(1)%Absorber(:,2) = ozoneConcLayers(:,n)
-
     if( aerosolsOn )  then
       do species = 1, N_aerosols
         atm(1)%Aerosol(species)%Type                = aerosolType(n, species)
@@ -224,7 +221,6 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
         atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(:,n, species)
       enddo
     endif
-
     if( cloudsOn ) then
       do species = 1, N_clouds
         atm(1)%Cloud(species)%Type                = cloudType(n, species)
@@ -249,10 +245,6 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
                                  Sensor_Azimuth_Angle = azimuthAngle(n),  &  
                                  Source_Zenith_Angle  = solarAngle(1,n),  & 
                                  Source_Azimuth_Angle = solarAngle(2,n) )
-    !print *, atm(1)%Temperature
-    !geo%Sensor_Zenith_Angle = zenithAngle(n)
-    !geo%Sensor_Scan_Angle = scanAngle(n)
-    !geo%Sensor_Azimuth_Angle = azimuthAngle(n) 
     ! ==========================================================================
     ! 4a.1 Profile #1
     ! ---------------
@@ -420,7 +412,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   real(kind=8), intent(out) ::  humidityJacobian(nChan, N_LAYERS, N_profiles)
   real(kind=8), intent(out) :: ozoneJacobian(nChan, N_LAYERS, N_profiles)
   integer, intent(in) :: nthreads
-  
+  integer :: year, month, day
 
   character(len=256) :: sensor_id(1)
   ! ============================================================================
@@ -466,6 +458,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
 
 
   sensor_id(1) = sensor_id_in
+  year = geo(1)%year
+  month = geo(1)%month
+  day = geo(1)%day
   ! Program header
   ! --------------
   CALL CRTM_Version( Version )
@@ -480,7 +475,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   !
   ! 4a. Initialise all the sensors at once
   ! --------------------------------------
-  if( all(aerosolConcentration < -9999.0) ) then
+  if( all(aerosolType < 0) ) then
     N_AEROSOLS_crtm = 0
     aerosolsOn = .False.
   else
@@ -488,7 +483,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     aerosolsOn = .True. 
   endif
 
-  if( all(cloudConcentration < -9999.0) ) then
+  if( all(cloudType < 0) ) then
     N_CLOUDS_crtm = 0
     cloudsOn = .False.
   else
@@ -532,24 +527,26 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
 !      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
 !      STOP
 !    END IF
- 
   ! Begin loop over sensors
   ! ----------------------
   ! openmp won't work for K-matrix. Should be a fix in future release of CRTM. 
-  !!$ call omp_set_num_threads(nthreads)
-  !!$omp parallel do default(firstprivate) shared(chinfo,emissivity,outTb,atm_k,rts_k)& 
-  !!$omp& shared(temperatureJacobian,humidityJacobian,ozoneJacobian,outTransmission)&
-  !!$omp& shared(zenithAngle, scanAngle, azimuthAngle, solarAngle)&
-  !!$omp& shared(nChan, N_Profiles, N_LAYERS)&
-  !!$omp& shared(pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers)& 
-  !!$omp& shared(co2ConcLayers)& 
-  !!$omp& shared(aerosolEffectiveRadius, aerosolConcentration, aerosolType)& 
-  !!$omp& shared(cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology)& 
-  !!$omp& shared(surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m, n_absorbers)& 
-  !!$omp& shared(landType, soilType, vegType, waterType, snowType, iceType)&
-  !!$omp& num_threads(nthreads) 
+  !$ call omp_set_num_threads(nthreads)
+  !$omp parallel do default(private) shared(emissivity,outTb)&
+  !$omp& shared(temperatureJacobian,humidityJacobian)& 
+  !$omp& shared(ozoneJacobian,outTransmission, year, month, day)&
+  !$omp& shared(N_Layers,N_Absorbers,N_CLOUDS_crtm, N_AEROSOLS_crtm)&
+  !$omp& shared(pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers)& 
+  !$omp& shared(co2ConcLayers, cloudsOn, aerosolsOn, zenithAngle,scanAngle,azimuthAngle,solarAngle)& 
+  !$omp& shared(aerosolEffectiveRadius, aerosolConcentration, aerosolType)& 
+  !$omp& shared(cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology)& 
+  !$omp& shared(surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m)& 
+  !$omp& shared(landType, soilType, vegType, waterType, snowType, iceType)&
+  !$omp& shared(sensor_id,coefficientPath, chinfo)&
  
+  !$omp& num_threads(nthreads) 
   Profile_Loop: DO n = 1, N_profiles
+
+
 
   
     ! ==========================================================================
@@ -655,15 +652,14 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     atm(1)%Absorber(:,1) = humidityLayers(:,n)
     atm(1)%Absorber(:,2) = ozoneConcLayers(:,n)
     if( aerosolsOn )  then
-        do species = 1,N_aerosols
+        do species = 1,N_aerosols_crtm
             atm(1)%Aerosol(species)%Type                = aerosolType(n,species)
             atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius(:, n, species)
             atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(:, n, species)
         enddo
     endif
-
     if( cloudsOn ) then
-        do species = 1,N_clouds
+        do species = 1,N_clouds_crtm
             atm(1)%Cloud(species)%Type                = cloudType(n, species)
             atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(:, n, species)
             atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(:, n, species)
@@ -682,12 +678,14 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! ------------------
     ! All profiles are given the same value
     CALL CRTM_Geometry_SetValue( geo, &
+                                 year = year, & 
+                                 month = month, & 
+                                 day = day, & 
                                  Sensor_Zenith_Angle  = zenithAngle(n),   &
                                  Sensor_Scan_Angle    = scanAngle(n),     & 
                                  Sensor_Azimuth_Angle = azimuthAngle(n),  &  
                                  Source_Zenith_Angle  = solarAngle(1,n),  & 
                                  Source_Azimuth_Angle = solarAngle(2,n) )
- 
     ! ==========================================================================
 
 
@@ -698,9 +696,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     !
     ! 7a. Zero the K-matrix OUTPUT structures
     ! ---------------------------------------
+    
     CALL CRTM_Atmosphere_Zero( atm_K )
     CALL CRTM_Surface_Zero( sfc_K )
-
 
     ! 7b. Inintialize the K-matrix INPUT so
     !     that the results are dTb/dx
@@ -777,14 +775,35 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     outTb(:,n) = rts(:,1)%Brightness_Temperature 
     emissivity(:,n) = rts(:,1)%Surface_Emissivity
     CALL CRTM_Atmosphere_Destroy(atm)
+      if(alloc_stat /= SUCCESS) then
+        print*, 'atm destroy failed'
+        STOP
+    endif
+    CALL CRTM_Atmosphere_Destroy(atm_k)
     DEALLOCATE(atm_k, STAT = alloc_stat)
-    DEALLOCATE(rts_K, sfc_k, STAT = alloc_stat)
-    DEALLOCATE(rts, STAT = alloc_stat)
-    DEALLOCATE(atm, sfc, STAT = alloc_stat)
+    if(alloc_stat /= SUCCESS) then
+        print*, 'atm_k destroy failed'
+        STOP
+    endif
+  DEALLOCATE(rts_K, sfc_k, STAT = alloc_stat)
+   if(alloc_stat /= SUCCESS) then
+        print*, 'rts_k dealloc failed'
+        STOP
+    endif
+   DEALLOCATE(rts, STAT = alloc_stat)
+   if(alloc_stat /= SUCCESS) then
+        print*, 'rts dealloc failed'
+        STOP
+    endif
+   DEALLOCATE(atm, sfc, STAT = alloc_stat)
+    if(alloc_stat /= SUCCESS) then
+        print*, 'dealloc atm,sfc failed'
+        STOP
+    endif
     ! ==========================================================================
 
   END DO Profile_Loop
-  !!$omp end parallel do
+  !$omp end parallel do
   ! ==========================================================================
   ! 10. **** DESTROY THE CRTM ****
   !
