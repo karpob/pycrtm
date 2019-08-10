@@ -47,7 +47,7 @@ def main(coefficientPath, sensor_id):
     storedTb = []
     storedEmis = []
     ii = 0
-    for i in list(range(200)):
+    for i in list(range(25)):
         duplicateCases.append(cases[ii])
         ii+=1
         if(ii==4): ii=0
@@ -100,7 +100,7 @@ def main(coefficientPath, sensor_id):
                         np.asarray(surfaceTemperatures).T, np.asarray(surfaceFractions).T, np.asarray(LAI), salinity*np.ones(len(LAI)), np.asarray(windSpeed).T, np.asarray(windDirection).T, np.asarray(n_absorbers).T,\
                         np.asarray(landType), np.asarray(soilType), np.asarray(vegType), np.asarray(waterType), np.asarray(snowType), np.asarray(iceType), 10)
 
-    print("Running K Matrix with 1 thread Can't do anthing else at the moment.")
+    print("Running K Matrix with 10 threads.")
     kTb, kTransmission, temperatureJacobian, humidityJacobian, ozoneJacobian,\
     kEmissivity = pycrtm.wrap_k_matrix( coefficientPath, sensor_id,\
                         np.asarray(zenithAngle).T, np.asarray(scanAngle).T,np.asarray(azimuthAngle).T, np.asarray(solarAngle).T, nChan, \
@@ -109,13 +109,13 @@ def main(coefficientPath, sensor_id):
                         np.asarray(aerosolEffectiveRadius).T, np.asarray(aerosolConcentration).T, np.asarray(aerosolType).T, \
                         np.asarray(cloudEffectiveRadius).T, np.asarray(cloudConcentration).T, np.asarray(cloudType).T, np.asarray(cloudFraction).T, np.asarray(climatology).T, \
                         np.asarray(surfaceTemperatures).T, np.asarray(surfaceFractions).T, np.asarray(LAI), salinity*np.ones(len(LAI)), np.asarray(windSpeed).T, np.asarray(windDirection).T, np.asarray(n_absorbers).T,\
-                        np.asarray(landType), np.asarray(soilType), np.asarray(vegType), np.asarray(waterType), np.asarray(snowType), np.asarray(iceType), 1)
+                        np.asarray(landType), np.asarray(soilType), np.asarray(vegType), np.asarray(waterType), np.asarray(snowType), np.asarray(iceType), 2)
  
 
     end = time.time()
     print('pycrtm took',end-start)
 
-    if ( all( np.abs( forwardTb.flatten() - np.asarray(storedTb).T.flatten() ) <= 1e-10)  and all( np.abs( kTb.flatten() - np.asarray(storedTb).T.flatten() ) <= 1e-10) ):
+    if ( all( np.abs( forwardTb.flatten() - np.asarray(storedTb).T.flatten() ) <= 1e-5)  and all( np.abs( kTb.flatten() - np.asarray(storedTb).T.flatten() ) <= 1e-5) ):
         print("Yay! all values are close enough to what CRTM test program produced!")
     else: 
         print("Boo! something failed. Look at all_200 plots")

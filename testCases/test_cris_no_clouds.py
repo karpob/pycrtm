@@ -22,8 +22,8 @@ def main(coefficientPath, sensor_id):
                         h5['zenithAngle'][()], h5['scanAngle'][()], 999.9, np.asarray([100.0,0.0]), nChan, \
                         h5['pressureLevels'], h5['pressureLayers'], h5['temperatureLayers'], h5['humidityLayers'], h5['ozoneConcLayers'],\
                         h5['co2ConcLayers'],\
-                        h5['aerosolEffectiveRadius'], nans, h5['aerosolType'][()], \
-                        h5['cloudEffectiveRadius'], nans, h5['cloudType'][()], h5['cloudFraction'], h5['climatology'][()], \
+                        h5['aerosolEffectiveRadius'], nans, -1, \
+                        h5['cloudEffectiveRadius'], nans, -1, h5['cloudFraction'], h5['climatology'][()], \
                         h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, 5.0, h5['windDirection10m'][()], h5['n_absorbers'][()],\
                         h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()], 1)
 
@@ -34,8 +34,8 @@ def main(coefficientPath, sensor_id):
                         h5['zenithAngle'][()], h5['scanAngle'][()], 999.9, np.asarray([100.0,0.0]), nChan,\
                         h5['pressureLevels'], h5['pressureLayers'], h5['temperatureLayers'], h5['humidityLayers'], h5['ozoneConcLayers'],\
                         h5['co2ConcLayers'],\
-                        h5['aerosolEffectiveRadius'], nans, h5['aerosolType'][()], \
-                        h5['cloudEffectiveRadius'], nans, h5['cloudType'][()], h5['cloudFraction'], h5['climatology'][()], \
+                        h5['aerosolEffectiveRadius'], nans, -1, \
+                        h5['cloudEffectiveRadius'], nans, -1, h5['cloudFraction'], h5['climatology'][()], \
                         h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, 5.0, h5['windDirection10m'][()], h5['n_absorbers'][()],\
                         h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()],1)
         

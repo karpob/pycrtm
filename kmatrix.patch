@@ -1,0 +1,180 @@
+--- libsrc/CRTM_AerosolScatter.f90	2017-11-27 13:56:57.000000000 -0500
++++ CRTM_AerosolScatter.f90	2019-08-10 11:12:51.000000000 -0400
+@@ -904,8 +904,10 @@
+     REAL(fp) :: f_TL(NPTS), r_TL(NPTS)
+     REAL(fp) :: z_TL(NPTS,NPTS)
+     TYPE(LPoly_type) :: wlp_TL, xlp_TL
+-    REAL(fp), POINTER :: z(:,:) => NULL()
+-        
++    !REAL(fp), POINTER :: z(:,:) => NULL()
++    REAL(fp), POINTER :: z(:,:) 
++    
++    nullify(z)    
+     ! Setup
+     ! -----
+     ! No TL output when all dimensions
+@@ -1011,8 +1013,10 @@
+     REAL(fp) :: f_AD(NPTS), r_AD(NPTS)
+     REAL(fp) :: z_AD(NPTS,NPTS)
+     TYPE(LPoly_type) :: wlp_AD, xlp_AD
+-    REAL(fp), POINTER :: z(:,:) => NULL()
++    !REAL(fp), POINTER :: z(:,:) => NULL()
++    REAL(fp), POINTER :: z(:,:)
+ 
++    nullify(z)
+ 
+     ! Setup
+     ! -----
+--- libsrc/CRTM_CloudScatter.f90	2017-11-27 13:56:51.000000000 -0500
++++ CRTM_CloudScatter.f90	2019-08-10 11:12:50.000000000 -0400
+@@ -931,7 +931,9 @@
+     REAL(fp) :: f_TL(NPTS), r_TL(NPTS)
+     REAL(fp) :: z_TL(NPTS,NPTS)
+     TYPE(LPoly_type) :: wlp_TL, xlp_TL
+-    REAL(fp), POINTER :: z(:,:) => NULL()
++    !REAL(fp), POINTER :: z(:,:) => NULL()
++    REAL(fp), POINTER :: z(:,:)
++    nullify(z)
+     
+ 
+     ! Setup
+@@ -1042,8 +1044,9 @@
+     REAL(fp) :: f_AD(NPTS), r_AD(NPTS)
+     REAL(fp) :: z_AD(NPTS,NPTS)
+     TYPE(LPoly_type) :: wlp_AD, xlp_AD
+-    REAL(fp), POINTER :: z(:,:) => NULL()
+-
++    !REAL(fp), POINTER :: z(:,:) => NULL()
++    REAL(fp), POINTER :: z(:,:)
++    nullify(z)
+ 
+     ! Setup
+     ! -----
+@@ -1294,10 +1297,12 @@
+     REAL(fp) :: z2_TL(NPTS,NPTS)
+     REAL(fp) :: z3_TL(NPTS,NPTS,NPTS)
+     TYPE(LPoly_type) :: wlp_TL, xlp_TL, ylp_TL
+-    REAL(fp), POINTER :: z2(:,:)   => NULL()
+-    REAL(fp), POINTER :: z3(:,:,:) => NULL()
+-
+-
++    !REAL(fp), POINTER :: z2(:,:)   => NULL()
++    !REAL(fp), POINTER :: z3(:,:,:) => NULL()
++    REAL(fp), POINTER :: z2(:,:)  
++    REAL(fp), POINTER :: z3(:,:,:) 
++    nullify(z2)
++    nullify(z3)
+     ! Setup
+     ! -----
+     ! Initialise results that may
+@@ -1481,9 +1486,14 @@
+     REAL(fp) :: z2_AD(NPTS,NPTS)
+     REAL(fp) :: z3_AD(NPTS,NPTS,NPTS)
+     TYPE(LPoly_type) :: wlp_AD, xlp_AD, ylp_AD
+-    REAL(fp), POINTER :: z2(:,:)   => NULL()
+-    REAL(fp), POINTER :: z3(:,:,:) => NULL()
++    !REAL(fp), POINTER :: z2(:,:)   => NULL()
++    !REAL(fp), POINTER :: z3(:,:,:) => NULL()
++
++    REAL(fp), POINTER :: z2(:,:)  
++    REAL(fp), POINTER :: z3(:,:,:)
+ 
++    nullify(z2)
++    nullify(z3) 
+     ! Setup
+     ! -----
+     ! Initialise local adjoint variables
+--- libsrc/ODPS_Predictor.f90	2017-11-27 13:56:47.000000000 -0500
++++ ODPS_Predictor.f90	2019-08-10 11:12:50.000000000 -0400
+@@ -522,7 +522,6 @@
+     ! Local variables
+     REAL(fp) :: Absorber_AD(Predictor%n_Layers, TC%n_Absorbers)
+     REAL(fp) :: Temperature_AD(Predictor%n_Layers)
+-
+     ! Initialise local adjoint variables
+     Temperature_AD = ZERO
+     Absorber_AD    = ZERO
+@@ -556,7 +555,6 @@
+       Temperature_AD            , &
+       Absorber_AD                 )
+ 
+-
+     ! Map data from user to internal fixed pressure layers/levels
+     CALL Map_Input_AD( &
+       TC            , &
+@@ -564,7 +562,6 @@
+       Absorber_AD   , &
+       Atm_AD        , &
+       Predictor%PAFV  )
+-
+   END SUBROUTINE ODPS_Assemble_Predictors_AD
+ 
+ 
+@@ -1207,8 +1204,8 @@
+     REAL(fp) ::    GAzp_TL(SIZE(Absorber, DIM=1), SIZE(Absorber, DIM=2))
+     REAL(fp) ::    GATzp_sum_TL(SIZE(Absorber, DIM=2))
+     REAL(fp) ::    GATzp_TL(SIZE(Absorber, DIM=1), SIZE(Absorber, DIM=2))
+-    TYPE(PAFV_type), POINTER  :: PAFV => NULL()
+-
++    TYPE(PAFV_type), POINTER  :: PAFV !=> NULL()
++    nullify(PAFV) 
+     ! use short name
+     PAFV => Predictor%PAFV
+ 
+@@ -1772,8 +1769,9 @@
+     REAL(fp) ::    GAzp_AD(SIZE(Absorber, DIM=1), SIZE(Absorber, DIM=2))
+     REAL(fp) ::    GATzp_sum_AD(SIZE(Absorber, DIM=2))
+     REAL(fp) ::    GATzp_AD(SIZE(Absorber, DIM=1), SIZE(Absorber, DIM=2))
+-    TYPE(PAFV_type), POINTER  :: PAFV => NULL()
++    TYPE(PAFV_type), POINTER  :: PAFV !=> NULL()
+ 
++    nullify(PAFV)
+     ! use short name
+     PAFV => Predictor%PAFV
+ 
+@@ -2875,8 +2873,8 @@
+                  t2_TL,    s_t_TL, s_p_TL, Inverse_TL, d_Absorber_TL
+      REAL(fp) :: Int_vapor_prev_TL, Int_vapor_TL, AveA_TL, ap1_TL
+      INTEGER  :: i, k
+-     TYPE(PAFV_type), POINTER  :: PAFV => NULL()
+-
++     TYPE(PAFV_type), POINTER  :: PAFV !=> NULL()
++     nullify(PAFV)
+      ! short name
+      PAFV => Predictor%PAFV
+ 
+@@ -3060,8 +3058,9 @@
+      REAL(fp) :: t2_AD, s_t_AD, s_p_AD, Inverse_AD, d_Absorber_AD
+      REAL(fp) :: Int_vapor_prev_AD, Int_vapor_AD, AveA_AD, ap1_AD
+      INTEGER  :: i, k
+-     TYPE(PAFV_type), POINTER  :: PAFV => NULL()
++     TYPE(PAFV_type), POINTER  :: PAFV !=> NULL()
+ 
++     nullify(PAFV)
+      ! short name
+      PAFV => Predictor%PAFV
+ 
+--- libsrc/NESDIS_ATMS_SnowEM_Module.f90	2017-11-27 13:56:50.000000000 -0500
++++ NESDIS_ATMS_SnowEM_Module.f90	2019-08-10 11:32:30.000000000 -0400
+@@ -291,13 +291,16 @@
+      REAL(fp),INTENT(IN),  OPTIONAL  :: Tbs(:), Tss, Snow_Depth
+      REAL(fp),INTENT(OUT)            :: Emissivity_H,Emissivity_V
+      REAL(fp) :: em_vector(2),esh1,esv1,esh2,esv2,desh,desv,dem
+-     REAL(fp) :: Ts = 273.15 ! default skin-surface temperature
+-     INTEGER :: Snow_Type = 4 ! default snow type
++     REAL(fp) :: Ts
++     INTEGER :: Snow_Type
+      INTEGER :: i
+ 
+-     LOGICAL  :: VALID_SNOW_DEPTH = .FALSE.
+-     INTEGER  :: input_type = 0
+-
++     LOGICAL  :: VALID_SNOW_DEPTH
++     INTEGER  :: input_type
++     Ts = 273.15
++     Snow_Type = 4
++     VALID_SNOW_DEPTH = .FALSE.
++     input_type = 0
+    ! Analyze the input types and determine which algorithms to be used
+ 
+      IF (PRESENT(Snow_Depth) .AND. PRESENT(Tss) ) THEN

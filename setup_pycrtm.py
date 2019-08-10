@@ -29,7 +29,7 @@ def main( a ):
         # go into extracted tarball source directory
         os.chdir( glob.glob('REL-*')[0] ) 
 
-        print("Patching CRTM for gfortran") 
+        print("Patching CRTM for gfortran and openmp compatibility in k-matrix.") 
         if(arch=='gfortran-openmp'): patchCrtm(fo, fe, scriptDir)
 
 
@@ -157,7 +157,11 @@ def patchCrtm(fo, fe, scriptDir):
     # patch to fix gfortran incompatibility make some objects in/out
     p = Popen(['patch','-p0','-i',os.path.join(scriptDir,'gfortran.patch')],stderr=fe,stdout=fo)
     p.wait()
-    runAndCheckProcess(p,"Patching CRTM for gcc compatibility ", fo, fe, scriptDir)
+    runAndCheckProcess(p,"Patching CRTM for gcc compatibility", fo, fe, scriptDir)
+
+    p = Popen(['patch','-p0','-i',os.path.join(scriptDir,'kmatrix.patch')],stderr=fe,stdout=fo)
+    p.wait()
+    runAndCheckProcess(p,"Patching CRTM for OpenMP k-matrix compatibility ", fo, fe, scriptDir)
 
 def configureCompileInstallCrtm( installLocation, fo, fe, scriptDir ):
     # configure as one usually does
