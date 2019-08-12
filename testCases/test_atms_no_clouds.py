@@ -19,7 +19,7 @@ def main(coefficientPath, sensor_id):
         nans = -9999.9* np.ones(np.asarray(h5['aerosolConcentration']).shape)
         forwardTb, forwardTransmission,\
         forwardEmissivity = pycrtm.wrap_forward( coefficientPath, sensor_id,\
-                        h5['zenithAngle'][()], h5['scanAngle'][()], 999.9, np.zeros(2), nChan, \
+                        h5['zenithAngle'][()], h5['scanAngle'][()], 999.9, np.zeros(2), 2001,1,1, nChan, \
                         h5['pressureLevels'], h5['pressureLayers'], h5['temperatureLayers'], h5['humidityLayers'], h5['ozoneConcLayers'],\
                         h5['co2ConcLayers'],\
                         h5['aerosolEffectiveRadius'], nans, -1, \
@@ -31,7 +31,7 @@ def main(coefficientPath, sensor_id):
         temperatureJacobian,\
         humidityJacobian,\
         ozoneJacobian, kEmissivity = pycrtm.wrap_k_matrix( coefficientPath, sensor_id,\
-                        h5['zenithAngle'][()], h5['scanAngle'][()], 999.9, np.zeros(2), nChan,\
+                        h5['zenithAngle'][()], h5['scanAngle'][()], 999.9, np.zeros(2), 2001,1,1, nChan,\
                         h5['pressureLevels'], h5['pressureLayers'], h5['temperatureLayers'], h5['humidityLayers'], h5['ozoneConcLayers'],\
                         h5['co2ConcLayers'],\
                         h5['aerosolEffectiveRadius'], nans, -1, \

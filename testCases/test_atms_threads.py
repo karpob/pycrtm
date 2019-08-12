@@ -46,6 +46,9 @@ def main(coefficientPath, sensor_id):
     duplicateCases = []
     storedTb = []
     storedEmis = []
+    year = []
+    month = []
+    day = []
     ii = 0
     for i in list(range(200)):
         duplicateCases.append(cases[ii])
@@ -60,6 +63,9 @@ def main(coefficientPath, sensor_id):
         scanAngle.append(h5['scanAngle'][()])
         azimuthAngle.append( 999.9), 
         solarAngle.append(np.asarray([100.0,0.0]))
+        year.append(2001)
+        month.append(1)
+        day.append(1)
         pressureLevels.append(h5['pressureLevels'])
         pressureLayers.append(h5['pressureLayers'])
         temperatureLayers.append(h5['temperatureLayers']) 
@@ -92,7 +98,7 @@ def main(coefficientPath, sensor_id):
     start = time.time()
     forwardTb, forwardTransmission,\
     forwardEmissivity = pycrtm.wrap_forward( coefficientPath, sensor_id,\
-                        np.asarray(zenithAngle).T, np.asarray(scanAngle).T,np.asarray(azimuthAngle).T, np.asarray(solarAngle).T, nChan, \
+                        np.asarray(zenithAngle).T, np.asarray(scanAngle).T,np.asarray(azimuthAngle).T, np.asarray(solarAngle).T, np.asarray(year), np.asarray(month), np.asarray(day), nChan, \
                         np.asarray(pressureLevels).T, np.asarray(pressureLayers).T, np.asarray(temperatureLayers).T, np.asarray(humidityLayers).T, np.asarray(ozoneConcLayers).T,\
                         np.asarray(co2ConcLayers).T,\
                         np.asarray(aerosolEffectiveRadius).T, np.asarray(aerosolConcentration).T, np.asarray(aerosolType).T, \
@@ -103,7 +109,7 @@ def main(coefficientPath, sensor_id):
     print("Running K Matrix with 10 threads.")
     kTb, kTransmission, temperatureJacobian, humidityJacobian, ozoneJacobian,\
     kEmissivity = pycrtm.wrap_k_matrix( coefficientPath, sensor_id,\
-                        np.asarray(zenithAngle).T, np.asarray(scanAngle).T,np.asarray(azimuthAngle).T, np.asarray(solarAngle).T, nChan, \
+                        np.asarray(zenithAngle).T, np.asarray(scanAngle).T,np.asarray(azimuthAngle).T, np.asarray(solarAngle).T,np.asarray( year), np.asarray(month), np.asarray(day),nChan, \
                         np.asarray(pressureLevels).T, np.asarray(pressureLayers).T, np.asarray(temperatureLayers).T, np.asarray(humidityLayers).T, np.asarray(ozoneConcLayers).T,\
                         np.asarray(co2ConcLayers).T,\
                         np.asarray(aerosolEffectiveRadius).T, np.asarray(aerosolConcentration).T, np.asarray(aerosolType).T, \
