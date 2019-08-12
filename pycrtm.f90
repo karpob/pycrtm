@@ -87,10 +87,10 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
 
   ! 3b. Define the FORWARD variables
   ! --------------------------------
-  TYPE(CRTM_Atmosphere_type)              :: atm(1)
-  TYPE(CRTM_Surface_type)                 :: sfc(1)
+  TYPE(CRTM_Atmosphere_type),allocatable  :: atm(:)
+  TYPE(CRTM_Surface_type), allocatable    :: sfc(:)
   TYPE(CRTM_RTSolution_type), ALLOCATABLE :: rts(:,:)
-  type(crtm_options_type)                :: options
+  type(crtm_options_type)                 :: options
   sensor_id(1) = sensor_id_in
   ! Program header
   ! --------------
@@ -160,26 +160,18 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     
     ! 5b. Allocate the ARRAYS
     ! -----------------------
-    ALLOCATE( rts( n_channels, 1), STAT = alloc_stat )
-
-    IF ( alloc_stat /= 0 ) THEN
-      message = 'Error allocating structure arrays'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
-
   ! Begin loop over profile
   ! ----------------------
   !$ call omp_set_num_threads(nthreads)
-  !$omp parallel do default(firstprivate) shared(chinfo,emissivity,outTb)& 
+  !$omp parallel do default(private) shared(chinfo,emissivity,outTb,outTransmission)& 
   !$omp& shared(zenithAngle, scanAngle, azimuthAngle, solarAngle)&
-  !$omp& shared(nChan, N_Profiles, N_LAYERS)&
+  !$omp& shared(nChan, N_Profiles, N_LAYERS, N_Clouds_crtm, N_aerosols_crtm)&
   !$omp& shared(pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers)& 
   !$omp& shared(co2ConcLayers)& 
-  !$omp& shared(aerosolEffectiveRadius, aerosolConcentration, aerosolType)& 
+  !$omp& shared(aerosolEffectiveRadius, aerosolConcentration, aerosolType, cloudsOn, aerosolsOn)& 
   !$omp& shared(cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology)& 
   !$omp& shared(surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m, n_absorbers)& 
-  !$omp& shared(landType, soilType, vegType, waterType, snowType, iceType)&
+  !$omp& shared(landType, soilType, vegType, waterType, snowType, iceType, year, month, day)&
   !$omp& num_threads(nthreads) 
   Profile_Loop: DO n = 1, N_Profiles
     n_channels = CRTM_ChannelInfo_n_Channels(chinfo(1))
@@ -189,7 +181,30 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     !           are allocated in this example
     ! ----------------------------------------
     ! The input FORWARD structure
-    
+     ALLOCATE( rts( n_channels, 1), STAT = alloc_stat )
+
+    IF ( alloc_stat /= 0 ) THEN
+      message = 'Error allocating structure arrays'
+      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
+      STOP
+    END IF
+    ALLOCATE( atm( 1), STAT = alloc_stat )
+
+    IF ( alloc_stat /= 0 ) THEN
+      message = 'Error allocating atm arrays'
+      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
+      STOP
+    END IF
+  ALLOCATE( sfc(1), STAT = alloc_stat )
+
+    IF ( alloc_stat /= 0 ) THEN
+      message = 'Error allocating sfc arrays'
+      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
+      STOP
+    END IF
+
+
+
     CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_ABSORBERS(n), N_CLOUDS_crtm, N_AEROSOLS_crtm )
     IF ( ANY (.NOT. CRTM_Atmosphere_Associated(atm)) ) THEN
       message = 'Error allocating CRTM Forward Atmosphere structure'
@@ -217,14 +232,14 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     atm(1)%Absorber(:,1) = humidityLayers(:,n)
     atm(1)%Absorber(:,2) = ozoneConcLayers(:,n)
     if( aerosolsOn )  then
-      do species = 1, N_aerosols
+      do species = 1, N_aerosols_crtm
         atm(1)%Aerosol(species)%Type                = aerosolType(n, species)
         atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius(:,n, species)
         atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(:,n, species)
       enddo
     endif
     if( cloudsOn ) then
-      do species = 1, N_clouds
+      do species = 1, N_clouds_crtm
         atm(1)%Cloud(species)%Type                = cloudType(n, species)
         atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(:, n, species)
         atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(:,n, species)
@@ -285,11 +300,11 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! ---------------------
 
     ! Need this to get transmission out of solution, otherwise won't be allocated !!!
-    !call crtm_rtsolution_create( rts, n_layers )
-    !if ( any(.not. crtm_rtsolution_associated( rts )) ) then
-    !    call display_message( subroutine_name, 'error allocating rts', err_stat)
-    !    return
-    !end if
+    call crtm_rtsolution_create( rts, n_layers )
+    if ( any(.not. crtm_rtsolution_associated( rts )) ) then
+        call display_message( subroutine_name, 'error allocating rts', err_stat)
+        !return
+    end if
 
     ! why did I put this here????
     !call crtm_options_create( options, nChan )
@@ -324,9 +339,9 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! CRTM_RTSolution_Inspect in the file CRTM_RTSolution_Define.f90 to
     ! select the needed variables for outputs.  These variables are contained
     ! in the structure RTSolution.
-    ! do l=1,nChan
-    !    outTransmission(l,1:n_layers, n) = rts(l,1)%Layer_Optical_Depth
-    !enddo
+    do l=1,nChan
+       outTransmission(l,1:n_layers, n) = rts(l,1)%Layer_Optical_Depth
+    enddo
     emissivity(:,n) = rts(:,1)%Surface_Emissivity 
     outTb(:,n) = rts(:,1)%Brightness_Temperature 
     
@@ -341,11 +356,13 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! -------------------------
     ! ==========================================================================
     CALL CRTM_Atmosphere_Destroy(atm)
+    call crtm_rtsolution_destroy(rts)
+    deallocate(atm,sfc)
+    DEALLOCATE(rts, STAT = alloc_stat)
   END DO Profile_Loop
   !$omp end parallel do
 
   
-    DEALLOCATE(rts, STAT = alloc_stat)
   
   ! ==========================================================================
   ! 10. **** DESTROY THE CRTM ****
