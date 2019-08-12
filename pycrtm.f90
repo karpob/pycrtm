@@ -2,6 +2,7 @@ module pycrtm
 contains
 subroutine wrap_forward( coefficientPath, sensor_id_in, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, &
+                        year, month, day, & 
                         nChan, N_Profiles, N_LAYERS, N_aerosols, N_clouds, &
                         pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
                         co2ConcLayers, & 
@@ -28,6 +29,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   integer, intent(in) :: nChan, N_Profiles, N_Layers, N_aerosols, N_clouds
   real(kind=8), intent(in) :: zenithAngle(n_profiles), scanAngle(n_profiles) 
   real(kind=8), intent(in) :: azimuthAngle(n_profiles), solarAngle(2,n_profiles)
+  integer, intent(in) :: year(n_profiles), month(n_profiles), day(n_profiles) 
   real(kind=8), intent(in) :: pressureLevels(N_LAYERS+1, N_Profiles)
   real(kind=8), intent(in) :: pressureLayers(N_LAYERS, N_Profiles), temperatureLayers(N_LAYERS, N_Profiles)
   real(kind=8), intent(in) ::humidityLayers(N_LAYERS,N_Profiles), ozoneConcLayers(N_LAYERS, N_Profiles)
@@ -240,11 +242,15 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! 6b. Geometry input
     ! ------------------
     CALL CRTM_Geometry_SetValue( geo, &
+                                 year = year(n), & 
+                                 month = month(n), & 
+                                 day = day(n), & 
                                  Sensor_Zenith_Angle  = zenithAngle(n),   &
                                  Sensor_Scan_Angle    = scanAngle(n),     & 
                                  Sensor_Azimuth_Angle = azimuthAngle(n),  &  
                                  Source_Zenith_Angle  = solarAngle(1,n),  & 
                                  Source_Azimuth_Angle = solarAngle(2,n) )
+ 
     ! ==========================================================================
     ! 4a.1 Profile #1
     ! ---------------
@@ -356,6 +362,7 @@ end subroutine wrap_forward
 
 subroutine wrap_k_matrix( coefficientPath, sensor_id_in, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, &  
+                        year, month, day, & 
                         nChan, N_profiles, N_LAYERS, N_aerosols, N_clouds, & 
                         pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
                         co2ConcLayers, & 
@@ -391,6 +398,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   ! on the default Re (earth radius) and h (satellite height)
   real(kind=8), intent(in) :: zenithAngle(N_profiles), scanAngle(N_profiles)
   real(kind=8), intent(in) :: azimuthAngle(N_profiles), solarAngle(2,N_profiles)
+  integer, intent(in) :: year(n_profiles), month(n_profiles), day(n_profiles)
   real(kind=8), intent(in) :: pressureLevels(N_LAYERS+1, N_profiles)
   real(kind=8), intent(in) :: pressureLayers(N_LAYERS, N_profiles), temperatureLayers(N_LAYERS, N_profiles)
   real(kind=8), intent(in) :: humidityLayers(N_LAYERS, N_profiles)
@@ -412,7 +420,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   real(kind=8), intent(out) ::  humidityJacobian(nChan, N_LAYERS, N_profiles)
   real(kind=8), intent(out) :: ozoneJacobian(nChan, N_LAYERS, N_profiles)
   integer, intent(in) :: nthreads
-  integer :: year, month, day
 
   character(len=256) :: sensor_id(1)
   ! ============================================================================
@@ -458,9 +465,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
 
 
   sensor_id(1) = sensor_id_in
-  year = geo(1)%year
-  month = geo(1)%month
-  day = geo(1)%day
   ! Program header
   ! --------------
   CALL CRTM_Version( Version )
@@ -533,7 +537,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   !$ call omp_set_num_threads(nthreads)
   !$omp parallel do default(private) shared(emissivity,outTb)&
   !$omp& shared(temperatureJacobian,humidityJacobian)& 
-  !$omp& shared(ozoneJacobian,outTransmission, year, month, day)&
+  !$omp& shared(ozoneJacobian,outTransmission)&
   !$omp& shared(N_Layers,N_Absorbers,N_CLOUDS_crtm, N_AEROSOLS_crtm)&
   !$omp& shared(pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers)& 
   !$omp& shared(co2ConcLayers, cloudsOn, aerosolsOn, zenithAngle,scanAngle,azimuthAngle,solarAngle)& 
@@ -541,7 +545,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   !$omp& shared(cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology)& 
   !$omp& shared(surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m)& 
   !$omp& shared(landType, soilType, vegType, waterType, snowType, iceType)&
-  !$omp& shared(sensor_id,coefficientPath, chinfo)&
+  !$omp& shared(sensor_id,coefficientPath, chinfo, year, month, day)&
  
   !$omp& num_threads(nthreads) 
   Profile_Loop: DO n = 1, N_profiles
@@ -673,14 +677,13 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
         atm(1)%Absorber_Id(3)     = CO2_ID
         atm(1)%absorber_units(3)  = VOLUME_MIXING_RATIO_UNITS
     endif
-
     ! 6b. Geometry input
     ! ------------------
     ! All profiles are given the same value
     CALL CRTM_Geometry_SetValue( geo, &
-                                 year = year, & 
-                                 month = month, & 
-                                 day = day, & 
+                                 year = year(n), & 
+                                 month = month(n), & 
+                                 day = day(n), & 
                                  Sensor_Zenith_Angle  = zenithAngle(n),   &
                                  Sensor_Scan_Angle    = scanAngle(n),     & 
                                  Sensor_Azimuth_Angle = azimuthAngle(n),  &  
