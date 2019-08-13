@@ -17,28 +17,29 @@ def main(coefficientPath, sensor_id):
         h5 = h5py.File(os.path.join(thisDir, 'data',c) , 'r')
         nChan = 22
         nans = -9999.9* np.ones(np.asarray(h5['aerosolConcentration']).shape)
+
         forwardTb, forwardTransmission,\
         forwardEmissivity = pycrtm.wrap_forward( coefficientPath, sensor_id,\
-                        h5['zenithAngle'][()], h5['scanAngle'][()], 999.9, np.zeros(2), 2001,1,1, nChan, \
-                        h5['pressureLevels'], h5['pressureLayers'], h5['temperatureLayers'], h5['humidityLayers'], h5['ozoneConcLayers'],\
-                        h5['co2ConcLayers'],\
-                        h5['aerosolEffectiveRadius'], nans, -1, \
-                        h5['cloudEffectiveRadius'], nans, -1, h5['cloudFraction'], h5['climatology'][()], \
-                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, 5.0, h5['windDirection10m'][()], h5['n_absorbers'][()],\
-                        h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()], 1)
+                        h5['zenithAngle'][()], h5['scanAngle'][()], 999.9, np.asarray([100.0,0.0]).reshape([1,2]),2001,1,1, nChan, \
+                        np.asarray(h5['pressureLevels']).reshape([1,93]),np.asarray(h5['pressureLayers']).reshape([1,92]), np.asarray(h5['temperatureLayers']).reshape([1,92]), np.asarray(h5['humidityLayers']).reshape([1,92]), np.asarray(h5['ozoneConcLayers']).reshape([1,92]),\
+                        np.asarray(h5['co2ConcLayers']).reshape([1,92]),\
+                        np.asarray(h5['aerosolEffectiveRadius']).reshape([1,92,1]), np.asarray(h5['aerosolConcentration']).reshape([1,92,1]), -1, \
+                        np.asarray(h5['cloudEffectiveRadius']).reshape([1,92,1]), np.asarray(h5['cloudConcentration']).reshape([1,92,1]), -1, np.asarray(h5['cloudFraction']).reshape([1,92]), h5['climatology'][()], \
+                        np.asarray(h5['surfaceTemperatures']).reshape([1,4]), np.asarray(h5['surfaceFractions']).reshape([1,4]), h5['LAI'][()], salinity, np.float(5.0), h5['windDirection10m'][()], h5['n_absorbers'][()],\
+                        h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()], 1 )
 
         kTb, kTransmission,\
         temperatureJacobian,\
         humidityJacobian,\
         ozoneJacobian, kEmissivity = pycrtm.wrap_k_matrix( coefficientPath, sensor_id,\
-                        h5['zenithAngle'][()], h5['scanAngle'][()], 999.9, np.zeros(2), 2001,1,1, nChan,\
-                        h5['pressureLevels'], h5['pressureLayers'], h5['temperatureLayers'], h5['humidityLayers'], h5['ozoneConcLayers'],\
-                        h5['co2ConcLayers'],\
-                        h5['aerosolEffectiveRadius'], nans, -1, \
-                        h5['cloudEffectiveRadius'], nans, -1, h5['cloudFraction'], h5['climatology'][()], \
-                        h5['surfaceTemperatures'], h5['surfaceFractions'], h5['LAI'][()], salinity, 5.0, h5['windDirection10m'][()], h5['n_absorbers'][()],\
-                        h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()],1)
-        
+                        h5['zenithAngle'][()], h5['scanAngle'][()], 999.9, np.asarray([100.0,0.0]).reshape([1,2]), 2001,1,1, nChan, \
+                        np.asarray(h5['pressureLevels']).reshape([1,93]),np.asarray(h5['pressureLayers']).reshape([1,92]), np.asarray(h5['temperatureLayers']).reshape([1,92]), np.asarray(h5['humidityLayers']).reshape([1,92]), np.asarray(h5['ozoneConcLayers']).reshape([1,92]),\
+                        np.asarray(h5['co2ConcLayers']).reshape([1,92]),\
+                        np.asarray(h5['aerosolEffectiveRadius']).reshape([1,92,1]), np.asarray(h5['aerosolConcentration']).reshape([1,92,1]), -1, \
+                        np.asarray(h5['cloudEffectiveRadius']).reshape([1,92,1]), np.asarray(h5['cloudConcentration']).reshape([1,92,1]), -1, np.asarray(h5['cloudFraction']).reshape([1,92]), h5['climatology'][()], \
+                        np.asarray(h5['surfaceTemperatures']).reshape([1,4]), np.asarray(h5['surfaceFractions']).reshape([1,4]), h5['LAI'][()], salinity, np.float(5.0), h5['windDirection10m'][()], h5['n_absorbers'][()],\
+                        h5['landType'][()], h5['soilType'][()], h5['vegType'][()], h5['waterType'][()], h5['snowType'][()], h5['iceType'][()], 1 )
+
 
         wavenumbers = np.arange(22)
         diffK = kTb.flatten()-h5['Tb_atms'][0:22]
