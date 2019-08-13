@@ -99,30 +99,30 @@ def main(coefficientPath, sensor_id):
     start = time.time()
     forwardTb, forwardTransmission,\
     forwardEmissivity = pycrtm.wrap_forward( coefficientPath, sensor_id,\
-                        np.asarray(zenithAngle).T, np.asarray(scanAngle).T,np.asarray(azimuthAngle).T, np.asarray(solarAngle).T, np.asarray(year), np.asarray(month), np.asarray(day),  nChan, \
-                        np.asarray(pressureLevels).T, np.asarray(pressureLayers).T, np.asarray(temperatureLayers).T, np.asarray(humidityLayers).T, np.asarray(ozoneConcLayers).T,\
-                        np.asarray(co2ConcLayers).T,\
-                        np.asarray(aerosolEffectiveRadius).T, np.asarray(aerosolConcentration).T, np.asarray(aerosolType).T, \
-                        np.asarray(cloudEffectiveRadius).T, np.asarray(cloudConcentration).T, np.asarray(cloudType).T, np.asarray(cloudFraction).T, np.asarray(climatology).T, \
-                        np.asarray(surfaceTemperatures).T, np.asarray(surfaceFractions).T, np.asarray(LAI), salinity*np.ones(len(LAI)), np.asarray(windSpeed).T, np.asarray(windDirection).T, np.asarray(n_absorbers).T,\
+                        np.asarray(zenithAngle), np.asarray(scanAngle),np.asarray(azimuthAngle), np.asarray(solarAngle), np.asarray(year), np.asarray(month), np.asarray(day),  nChan, \
+                        np.asarray(pressureLevels), np.asarray(pressureLayers), np.asarray(temperatureLayers), np.asarray(humidityLayers), np.asarray(ozoneConcLayers),\
+                        np.asarray(co2ConcLayers),\
+                        np.asarray(aerosolEffectiveRadius), np.asarray(aerosolConcentration), np.asarray(aerosolType), \
+                        np.asarray(cloudEffectiveRadius), np.asarray(cloudConcentration), np.asarray(cloudType), np.asarray(cloudFraction), np.asarray(climatology), \
+                        np.asarray(surfaceTemperatures), np.asarray(surfaceFractions), np.asarray(LAI), salinity*np.ones(len(LAI)), np.asarray(windSpeed), np.asarray(windDirection), np.asarray(n_absorbers),\
                         np.asarray(landType), np.asarray(soilType), np.asarray(vegType), np.asarray(waterType), np.asarray(snowType), np.asarray(iceType), 10)
 
     print("Running K Matrix with 10 threads.")
     kTb, kTransmission, temperatureJacobian, humidityJacobian, ozoneJacobian,\
     kEmissivity = pycrtm.wrap_k_matrix( coefficientPath, sensor_id,\
-                        np.asarray(zenithAngle).T, np.asarray(scanAngle).T,np.asarray(azimuthAngle).T, np.asarray(solarAngle).T, np.asarray(year), np.asarray(month), np.asarray(day), nChan, \
-                        np.asarray(pressureLevels).T, np.asarray(pressureLayers).T, np.asarray(temperatureLayers).T, np.asarray(humidityLayers).T, np.asarray(ozoneConcLayers).T,\
-                        np.asarray(co2ConcLayers).T,\
-                        np.asarray(aerosolEffectiveRadius).T, np.asarray(aerosolConcentration).T, np.asarray(aerosolType).T, \
-                        np.asarray(cloudEffectiveRadius).T, np.asarray(cloudConcentration).T, np.asarray(cloudType).T, np.asarray(cloudFraction).T, np.asarray(climatology).T, \
-                        np.asarray(surfaceTemperatures).T, np.asarray(surfaceFractions).T, np.asarray(LAI), salinity*np.ones(len(LAI)), np.asarray(windSpeed).T, np.asarray(windDirection).T, np.asarray(n_absorbers).T,\
-                        np.asarray(landType), np.asarray(soilType), np.asarray(vegType), np.asarray(waterType), np.asarray(snowType), np.asarray(iceType), 2)
+                        np.asarray(zenithAngle), np.asarray(scanAngle),np.asarray(azimuthAngle), np.asarray(solarAngle), np.asarray(year), np.asarray(month), np.asarray(day), nChan, \
+                        np.asarray(pressureLevels), np.asarray(pressureLayers), np.asarray(temperatureLayers), np.asarray(humidityLayers), np.asarray(ozoneConcLayers),\
+                        np.asarray(co2ConcLayers),\
+                        np.asarray(aerosolEffectiveRadius), np.asarray(aerosolConcentration), np.asarray(aerosolType), \
+                        np.asarray(cloudEffectiveRadius), np.asarray(cloudConcentration), np.asarray(cloudType), np.asarray(cloudFraction), np.asarray(climatology), \
+                        np.asarray(surfaceTemperatures), np.asarray(surfaceFractions), np.asarray(LAI), salinity*np.ones(len(LAI)), np.asarray(windSpeed), np.asarray(windDirection), np.asarray(n_absorbers),\
+                        np.asarray(landType), np.asarray(soilType), np.asarray(vegType), np.asarray(waterType), np.asarray(snowType), np.asarray(iceType), 10)
  
 
     end = time.time()
     print('pycrtm took',end-start)
 
-    if ( all( np.abs( forwardTb.flatten() - np.asarray(storedTb).T.flatten() ) <= 1e-5)  and all( np.abs( kTb.flatten() - np.asarray(storedTb).T.flatten() ) <= 1e-5) ):
+    if ( all( np.abs( forwardTb.flatten() - np.asarray(storedTb).flatten() ) <= 1e-5)  and all( np.abs( kTb.flatten() - np.asarray(storedTb).flatten() ) <= 1e-5) ):
         print("Yay! all values are close enough to what CRTM test program produced!")
     else: 
         print("Boo! something failed. Look at all_200 plots")
@@ -130,17 +130,17 @@ def main(coefficientPath, sensor_id):
         wavenumbers = np.asarray(h5wav['wavenumbers'])
 
         plt.figure()
-        plt.plot(wavenumbers,forwardTb-np.asarray(storedTb).T ) 
+        plt.plot(wavenumbers,forwardTb-np.asarray(storedTb) ) 
         plt.savefig(os.path.join(thisDir,'all_200'+'_spectrum_forward.png'))
         plt.figure()
-        plt.plot(wavenumbers,forwardEmissivity-np.asarray(storedEmis).T)
+        plt.plot(wavenumbers,forwardEmissivity-np.asarray(storedEmis))
         plt.savefig(os.path.join(thisDir,'all_200'+'_emissivity_forward.png')) 
     
         plt.figure()
-        plt.plot(wavenumbers,kTb-np.asarray(storedTb).T)
+        plt.plot(wavenumbers,kTb-np.asarray(storedTb))
         plt.savefig(os.path.join(thisDir,'all_200'+'_spectrum_k.png'))
         plt.figure()
-        plt.plot(wavenumbers,kEmissivity-np.asarray(storedEmis).T)
+        plt.plot(wavenumbers,kEmissivity-np.asarray(storedEmis))
         plt.savefig(os.path.join(thisDir,'all_200'+'_emissivity_k.png')) 
         sys.exit("Boo! didn't pass tolerance with CRTM test program.")
 

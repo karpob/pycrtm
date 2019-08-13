@@ -28,26 +28,26 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   ! on the default Re (earth radius) and h (satellite height)
   integer, intent(in) :: nChan, N_Profiles, N_Layers, N_aerosols, N_clouds
   real(kind=8), intent(in) :: zenithAngle(n_profiles), scanAngle(n_profiles) 
-  real(kind=8), intent(in) :: azimuthAngle(n_profiles), solarAngle(2,n_profiles)
+  real(kind=8), intent(in) :: azimuthAngle(n_profiles), solarAngle(n_profiles,2)
   integer, intent(in) :: year(n_profiles), month(n_profiles), day(n_profiles) 
-  real(kind=8), intent(in) :: pressureLevels(N_LAYERS+1, N_Profiles)
-  real(kind=8), intent(in) :: pressureLayers(N_LAYERS, N_Profiles), temperatureLayers(N_LAYERS, N_Profiles)
-  real(kind=8), intent(in) ::humidityLayers(N_LAYERS,N_Profiles), ozoneConcLayers(N_LAYERS, N_Profiles)
-  real(kind=8), intent(in) :: co2ConcLayers(N_LAYERS, N_Profiles)
-  real(kind=8), intent(in) :: aerosolEffectiveRadius(N_LAYERS, N_Profiles, N_aerosols)
-  real(kind=8), intent(in) :: aerosolConcentration(N_LAYERS, N_Profiles, N_aerosols)
-  real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS, N_Profiles, N_clouds)
-  real(kind=8), intent(in) :: cloudConcentration(N_LAYERS, N_Profiles, N_clouds) 
-  real(kind=8), intent(in) :: cloudFraction(N_LAYERS, N_Profiles)
+  real(kind=8), intent(in) :: pressureLevels(N_profiles, N_LAYERS+1)
+  real(kind=8), intent(in) :: pressureLayers(N_profiles, N_LAYERS), temperatureLayers(N_Profiles,N_Layers)
+  real(kind=8), intent(in) ::humidityLayers(N_profiles,N_LAYERS), ozoneConcLayers(N_profiles,N_LAYERS)
+  real(kind=8), intent(in) :: co2ConcLayers(N_Profiles,N_layers)
+  real(kind=8), intent(in) :: aerosolEffectiveRadius(N_Profiles,N_layers, N_aerosols)
+  real(kind=8), intent(in) :: aerosolConcentration(N_profiles,N_layers, N_aerosols)
+  real(kind=8), intent(in) :: cloudEffectiveRadius(N_Profiles,N_layers, N_clouds)
+  real(kind=8), intent(in) :: cloudConcentration(N_profiles, N_LAYERS, N_clouds) 
+  real(kind=8), intent(in) :: cloudFraction(N_Profiles, N_layers)
   integer, intent(in) :: aerosolType(N_Profiles, N_aerosols), cloudType(N_Profiles, N_clouds)
   integer, intent(in) :: n_absorbers(N_Profiles), climatology(N_profiles)
-  real(kind=8), intent(in) :: surfaceTemperatures(4, N_Profiles), surfaceFractions(4, N_Profiles)
+  real(kind=8), intent(in) :: surfaceTemperatures(N_Profiles,4), surfaceFractions(N_profiles, 4)
   real(kind=8), intent(in) :: LAI(N_Profiles), salinity(N_Profiles),  windSpeed10m(N_Profiles), windDirection10m(N_Profiles)
   integer, intent(in) ::  landType(N_Profiles), soilType(N_Profiles), vegType(N_Profiles), waterType(N_Profiles)
   integer, intent(in) ::  snowType(N_Profiles), iceType(N_Profiles) 
   integer, intent(in) :: nthreads
-  real(kind=8), intent(out) :: outTb(nChan, N_Profiles), emissivity(nChan, N_Profiles)
-  real(kind=8), intent(out) :: outTransmission(nChan, N_LAYERS, N_Profiles)
+  real(kind=8), intent(out) :: outTb(N_Profiles,nChan), emissivity(N_Profiles,nChan)
+  real(kind=8), intent(out) :: outTransmission(N_profiles, nChan, N_Layers)
   character(len=256), dimension(1) :: sensor_id
   ! --------------------------
   ! Some non-CRTM-y Parameters
@@ -73,7 +73,6 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   INTEGER :: err_stat, alloc_stat
   INTEGER :: n_channels, N_clouds_crtm, N_aerosols_crtm
   INTEGER :: i, l, m, n, nc, ll,mm, nn, species
-  real, dimension(n_layers,nchan) :: outTau
   logical :: cloudsOn, aerosolsOn
 
   ! ============================================================================
@@ -226,29 +225,29 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     atm(1)%Absorber_Units(1:2) = (/ MASS_MIXING_RATIO_UNITS, VOLUME_MIXING_RATIO_UNITS /)
     ! ...Profile data
     atm(1)%Climatology = climatology(n)
-    atm(1)%Level_Pressure = pressureLevels(:,n)
-    atm(1)%Pressure = pressureLayers(:,n)
-    atm(1)%Temperature = temperatureLayers(:,n)
-    atm(1)%Absorber(:,1) = humidityLayers(:,n)
-    atm(1)%Absorber(:,2) = ozoneConcLayers(:,n)
+    atm(1)%Level_Pressure = pressureLevels(n,:)
+    atm(1)%Pressure = pressureLayers(n,:)
+    atm(1)%Temperature = temperatureLayers(n,:)
+    atm(1)%Absorber(:,1) = humidityLayers(n,:)
+    atm(1)%Absorber(:,2) = ozoneConcLayers(n,:)
     if( aerosolsOn )  then
       do species = 1, N_aerosols_crtm
         atm(1)%Aerosol(species)%Type                = aerosolType(n, species)
-        atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius(:,n, species)
-        atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(:,n, species)
+        atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius(n,:, species)
+        atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(n,:, species)
       enddo
     endif
     if( cloudsOn ) then
       do species = 1, N_clouds_crtm
         atm(1)%Cloud(species)%Type                = cloudType(n, species)
-        atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(:, n, species)
-        atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(:,n, species)
+        atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(n,:, species)
+        atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(n,:, species)
       enddo
-      atm(1)%Cloud_Fraction(:)            = cloudFraction(:,n)
+      atm(1)%Cloud_Fraction(:)            = cloudFraction(n,:)
     endif
 
     if(n_absorbers(n) >2) then 
-      atm(1)%Absorber(:,3)     = co2ConcLayers(:,n)
+      atm(1)%Absorber(:,3)     = co2ConcLayers(n,:)
       atm(1)%Absorber_Id(3)    = CO2_ID
       atm(1)%absorber_units(3) = VOLUME_MIXING_RATIO_UNITS
     endif
@@ -263,32 +262,32 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
                                  Sensor_Zenith_Angle  = zenithAngle(n),   &
                                  Sensor_Scan_Angle    = scanAngle(n),     & 
                                  Sensor_Azimuth_Angle = azimuthAngle(n),  &  
-                                 Source_Zenith_Angle  = solarAngle(1,n),  & 
-                                 Source_Azimuth_Angle = solarAngle(2,n) )
+                                 Source_Zenith_Angle  = solarAngle(n,1),  & 
+                                 Source_Azimuth_Angle = solarAngle(n,2) )
  
     ! ==========================================================================
     ! 4a.1 Profile #1
     ! ---------------
     ! ...Land surface characteristics
-    sfc%Land_Coverage     = surfaceFractions(1,n)
+    sfc%Land_Coverage     = surfaceFractions(n,1)
     sfc%Land_Type         = landType(n) !TUNDRA_SURFACE_TYPE
-    sfc%Land_Temperature  = surfaceTemperatures(1,n)
+    sfc%Land_Temperature  = surfaceTemperatures(n,1)
     sfc%Lai               = LAI(n)
     sfc%Soil_Type         = soilType(n) !COARSE_SOIL_TYPE
     sfc%Vegetation_Type   = vegType(n) !GROUNDCOVER_VEGETATION_TYPE
     ! ...Water surface characteristics
-    sfc%Water_Coverage    = surfaceFractions(2,n)
+    sfc%Water_Coverage    = surfaceFractions(n,2)
     sfc%Water_Type        = waterType(n) !SEA_WATER_TYPE
-    sfc%Water_Temperature = surfaceTemperatures(2,n)
+    sfc%Water_Temperature = surfaceTemperatures(n,2)
 
     ! ...Snow coverage characteristics
-    sfc%Snow_Coverage    = surfaceFractions(3,n)
+    sfc%Snow_Coverage    = surfaceFractions(n,3)
     sfc%Snow_Type        = snowType(n) !FRESH_SNOW_TYPE
-    sfc%Snow_Temperature = surfaceTemperatures(3,n)
+    sfc%Snow_Temperature = surfaceTemperatures(n,3)
     ! ...Ice surface characteristics
-    sfc%Ice_Coverage    = surfaceFractions(4,n)
+    sfc%Ice_Coverage    = surfaceFractions(n,4)
     sfc%Ice_Type        = iceType(n) !FRESH_ICE_TYPE
-    sfc%Ice_Temperature = surfaceTemperatures(4,n)
+    sfc%Ice_Temperature = surfaceTemperatures(n,4)
 
    
     ! ==========================================================================
@@ -340,10 +339,10 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! select the needed variables for outputs.  These variables are contained
     ! in the structure RTSolution.
     do l=1,nChan
-       outTransmission(l,1:n_layers, n) = rts(l,1)%Layer_Optical_Depth
+       outTransmission(n, l,1:n_layers) = rts(l,1)%Layer_Optical_Depth
     enddo
-    emissivity(:,n) = rts(:,1)%Surface_Emissivity 
-    outTb(:,n) = rts(:,1)%Brightness_Temperature 
+    emissivity(n,:) = rts(:,1)%Surface_Emissivity 
+    outTb(n,:) = rts(:,1)%Brightness_Temperature 
     
     ! ==========================================================================
     ! STEP 9. **** CLEAN UP FOR NEXT PROFILE ****
@@ -414,28 +413,28 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
   real(kind=8), intent(in) :: zenithAngle(N_profiles), scanAngle(N_profiles)
-  real(kind=8), intent(in) :: azimuthAngle(N_profiles), solarAngle(2,N_profiles)
+  real(kind=8), intent(in) :: azimuthAngle(N_profiles), solarAngle(N_profiles,2)
   integer, intent(in) :: year(n_profiles), month(n_profiles), day(n_profiles)
-  real(kind=8), intent(in) :: pressureLevels(N_LAYERS+1, N_profiles)
-  real(kind=8), intent(in) :: pressureLayers(N_LAYERS, N_profiles), temperatureLayers(N_LAYERS, N_profiles)
-  real(kind=8), intent(in) :: humidityLayers(N_LAYERS, N_profiles)
-  real(kind=8), intent(in) :: ozoneConcLayers(N_LAYERS, N_profiles)
-  real(kind=8), intent(in) :: co2ConcLayers(N_LAYERS, N_profiles)
-  real(kind=8), intent(in) :: aerosolEffectiveRadius(N_LAYERS, N_profiles, N_aerosols)
-  real(kind=8), intent(in) :: aerosolConcentration(N_LAYERS, N_profiles, N_aerosols)
-  real(kind=8), intent(in) :: cloudEffectiveRadius(N_LAYERS, N_profiles, N_clouds) 
-  real(kind=8), intent(in) :: cloudConcentration(N_LAYERS, N_profiles, N_clouds), cloudFraction(N_LAYERS, N_profiles)
+  real(kind=8), intent(in) :: pressureLevels(N_profiles, N_Layers+1)
+  real(kind=8), intent(in) :: pressureLayers(N_profiles, N_layers), temperatureLayers(N_profiles, N_layers)
+  real(kind=8), intent(in) :: humidityLayers(N_profiles, N_layers)
+  real(kind=8), intent(in) :: ozoneConcLayers(N_profiles, N_layers)
+  real(kind=8), intent(in) :: co2ConcLayers(N_profiles, N_layers)
+  real(kind=8), intent(in) :: aerosolEffectiveRadius(N_profiles,N_layers, N_aerosols)
+  real(kind=8), intent(in) :: aerosolConcentration(N_profiles,N_layers, N_aerosols)
+  real(kind=8), intent(in) :: cloudEffectiveRadius(N_profiles,N_layers, N_clouds) 
+  real(kind=8), intent(in) :: cloudConcentration(N_profiles, N_layers, N_clouds), cloudFraction(N_profiles,N_layers)
   integer, intent(in) :: aerosolType(N_profiles, N_aerosols), cloudType(N_profiles, N_clouds)
   integer, intent(in) :: n_absorbers(N_profiles), climatology(N_profiles)
-  real(kind=8), intent(in) :: surfaceTemperatures(4, N_profiles), surfaceFractions(4, N_profiles), LAI(N_profiles) 
+  real(kind=8), intent(in) :: surfaceTemperatures(N_profiles,4), surfaceFractions(N_profiles,4), LAI(N_profiles) 
   real(kind=8), intent(in) :: salinity(N_profiles), windSpeed10m(N_profiles), windDirection10m(N_profiles)
   integer, intent(in) :: landType(N_profiles), soilType(N_profiles), vegType(N_profiles), waterType(N_profiles) 
   integer, intent(in) :: snowType(N_profiles), iceType(N_profiles) 
-  real(kind=8), intent(out) :: outTb(nChan, N_profiles), emissivity(nChan, N_profiles)
-  real(kind=8), intent(out) :: outTransmission(nChan, N_LAYERS, N_profiles) 
-  real(kind=8), intent(out) :: temperatureJacobian(nChan,N_LAYERS, N_profiles)
-  real(kind=8), intent(out) ::  humidityJacobian(nChan, N_LAYERS, N_profiles)
-  real(kind=8), intent(out) :: ozoneJacobian(nChan, N_LAYERS, N_profiles)
+  real(kind=8), intent(out) :: outTb(N_profiles,nChan), emissivity(N_profiles,nChan)
+  real(kind=8), intent(out) :: outTransmission(N_profiles, nChan, N_LAYERS) 
+  real(kind=8), intent(out) :: temperatureJacobian(N_profiles, nChan, N_LAYERS)
+  real(kind=8), intent(out) ::  humidityJacobian(N_profiles, nChan, N_LAYERS)
+  real(kind=8), intent(out) :: ozoneJacobian(N_profiles, nChan, N_LAYERS)
   integer, intent(in) :: nthreads
 
   character(len=256) :: sensor_id(1)
@@ -667,30 +666,30 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     atm(1)%Absorber_Id(1:2)    = (/ H2O_ID                 , O3_ID /)
     atm(1)%Absorber_Units(1:2) = (/ MASS_MIXING_RATIO_UNITS, VOLUME_MIXING_RATIO_UNITS /)
     ! ...Profile data
-    atm(1)%Level_Pressure = pressureLevels(:,n)
-    atm(1)%Pressure = pressureLayers(:,n)
-    atm(1)%Temperature = temperatureLayers(:,n)
-    atm(1)%Absorber(:,1) = humidityLayers(:,n)
-    atm(1)%Absorber(:,2) = ozoneConcLayers(:,n)
+    atm(1)%Level_Pressure = pressureLevels(n,:)
+    atm(1)%Pressure = pressureLayers(n,:)
+    atm(1)%Temperature = temperatureLayers(n,:)
+    atm(1)%Absorber(:,1) = humidityLayers(n,:)
+    atm(1)%Absorber(:,2) = ozoneConcLayers(n,:)
     if( aerosolsOn )  then
         do species = 1,N_aerosols_crtm
             atm(1)%Aerosol(species)%Type                = aerosolType(n,species)
-            atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius(:, n, species)
-            atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(:, n, species)
+            atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius( n, :, species)
+            atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(n, :, species)
         enddo
     endif
     if( cloudsOn ) then
         do species = 1,N_clouds_crtm
             atm(1)%Cloud(species)%Type                = cloudType(n, species)
-            atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(:, n, species)
-            atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(:, n, species)
+            atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(n,:, species)
+            atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(n,:, species)
         enddo
-        atm(1)%Cloud_Fraction(:)            = cloudFraction(:, n)
+        atm(1)%Cloud_Fraction(:)            = cloudFraction(n, :)
     
     endif
 
     if( n_absorbers(n) > 2 ) then 
-        atm(1)%Absorber(:,3)      = co2ConcLayers(:,n)
+        atm(1)%Absorber(:,3)      = co2ConcLayers(n,:)
         atm(1)%Absorber_Id(3)     = CO2_ID
         atm(1)%absorber_units(3)  = VOLUME_MIXING_RATIO_UNITS
     endif
@@ -704,8 +703,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
                                  Sensor_Zenith_Angle  = zenithAngle(n),   &
                                  Sensor_Scan_Angle    = scanAngle(n),     & 
                                  Sensor_Azimuth_Angle = azimuthAngle(n),  &  
-                                 Source_Zenith_Angle  = solarAngle(1,n),  & 
-                                 Source_Azimuth_Angle = solarAngle(2,n) )
+                                 Source_Zenith_Angle  = solarAngle(n,1),  & 
+                                 Source_Azimuth_Angle = solarAngle(n,2) )
     ! ==========================================================================
 
 
@@ -730,25 +729,25 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! 4a.1 Profile #1
     ! ---------------
     ! ...Land surface characteristics
-    sfc%Land_Coverage     = surfaceFractions(1,n)
+    sfc%Land_Coverage     = surfaceFractions(n,1)
     sfc%Land_Type         = landType(n) !TUNDRA_SURFACE_TYPE
-    sfc%Land_Temperature  = surfaceTemperatures(1,n)
+    sfc%Land_Temperature  = surfaceTemperatures(n,1)
     sfc%Lai               = LAI(n)
     sfc%Soil_Type         = soilType(n) !COARSE_SOIL_TYPE
     sfc%Vegetation_Type   = vegType(n) !GROUNDCOVER_VEGETATION_TYPE
     ! ...Water surface characteristics
-    sfc%Water_Coverage    = surfaceFractions(2,n)
+    sfc%Water_Coverage    = surfaceFractions(n,2)
     sfc%Water_Type        = waterType(n) !SEA_WATER_TYPE
-    sfc%Water_Temperature = surfaceTemperatures(2,n)
+    sfc%Water_Temperature = surfaceTemperatures(n,2)
 
     ! ...Snow coverage characteristics
-    sfc%Snow_Coverage    = surfaceFractions(3,n)
+    sfc%Snow_Coverage    = surfaceFractions(n,3)
     sfc%Snow_Type        = snowType(n) !FRESH_SNOW_TYPE
-    sfc%Snow_Temperature = surfaceTemperatures(3,n)
+    sfc%Snow_Temperature = surfaceTemperatures(n,3)
     ! ...Ice surface characteristics
-    sfc%Ice_Coverage    = surfaceFractions(4,n)
+    sfc%Ice_Coverage    = surfaceFractions(n,4)
     sfc%Ice_Type        = iceType(n) !FRESH_ICE_TYPE
-    sfc%Ice_Temperature = surfaceTemperatures(4,n)
+    sfc%Ice_Temperature = surfaceTemperatures(n,4)
     ! ==========================================================================
     ! STEP 8. **** CALL THE CRTM FUNCTIONS FOR THE CURRENT SENSOR ****
     !
@@ -787,13 +786,13 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! -------------------------
     ! transfer jacobians out
     do l=1,nChan
-        temperatureJacobian(l, 1:n_layers, n) = atm_k(l, 1)%Temperature(1:n_layers)
-        humidityJacobian(l, 1:n_layers, n) = atm_k(l, 1)%Absorber(1:n_layers, 1)
-        ozoneJacobian(l, 1:n_layers, n) = atm_k(l, 1)%Absorber(1:n_layers, 2)
-        outTransmission(l, 1:n_layers, n) = rts(l, 1)%Layer_Optical_Depth
+        temperatureJacobian(n, l, 1:n_layers) = atm_k(l, 1)%Temperature(1:n_layers)
+        humidityJacobian(n, l, 1:n_layers) = atm_k(l, 1)%Absorber(1:n_layers, 1)
+        ozoneJacobian(n, l, 1:n_layers) = atm_k(l, 1)%Absorber(1:n_layers, 2)
+        outTransmission(n, l, 1:n_layers) = rts(l, 1)%Layer_Optical_Depth
     enddo
-    outTb(:,n) = rts(:,1)%Brightness_Temperature 
-    emissivity(:,n) = rts(:,1)%Surface_Emissivity
+    outTb(n,:) = rts(:,1)%Brightness_Temperature 
+    emissivity(n,:) = rts(:,1)%Surface_Emissivity
     CALL CRTM_Atmosphere_Destroy(atm)
       if(alloc_stat /= SUCCESS) then
         print*, 'atm destroy failed'

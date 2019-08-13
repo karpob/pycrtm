@@ -11,31 +11,31 @@ python module pycrtm ! in
                 real(kind=8) dimension(n_profiles),intent(in) :: zenithangle
                 real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: scanangle
                 real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: azimuthangle
-                real(kind=8) dimension(2,n_profiles),intent(in),depend(n_profiles) :: solarangle
+                real(kind=8) dimension(n_profiles,2),intent(in),depend(n_profiles) :: solarangle
                 integer dimension(n_profiles),intent(in),depend(n_profiles) :: year
                 integer dimension(n_profiles),intent(in),depend(n_profiles) :: month
                 integer dimension(n_profiles),intent(in),depend(n_profiles) :: day
                 integer intent(in) :: nchan
                 integer, optional,intent(in),check(len(zenithangle)>=n_profiles),depend(zenithangle) :: n_profiles=len(zenithangle)
-                integer, optional,intent(in),check((shape(pressurelevels,0)-1)==n_layers),depend(pressurelevels) :: n_layers=(shape(pressurelevels,0)-1)
+                integer, optional,intent(in),check((shape(pressurelevels,1)-1)==n_layers),depend(pressurelevels) :: n_layers=(shape(pressurelevels,1)-1)
                 integer, optional,intent(in),check(shape(aerosoleffectiveradius,2)==n_aerosols),depend(aerosoleffectiveradius) :: n_aerosols=shape(aerosoleffectiveradius,2)
                 integer, optional,intent(in),check(shape(cloudeffectiveradius,2)==n_clouds),depend(cloudeffectiveradius) :: n_clouds=shape(cloudeffectiveradius,2)
-                real(kind=8) dimension(n_layers + 1,n_profiles),intent(in),depend(n_profiles) :: pressurelevels
-                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: pressurelayers
-                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: temperaturelayers
-                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: humiditylayers
-                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: ozoneconclayers
-                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: co2conclayers
-                real(kind=8) dimension(n_layers,n_profiles,n_aerosols),intent(in),depend(n_layers,n_profiles) :: aerosoleffectiveradius
-                real(kind=8) dimension(n_layers,n_profiles,n_aerosols),intent(in),depend(n_layers,n_profiles,n_aerosols) :: aerosolconcentration
+                real(kind=8) dimension(n_profiles,n_layers + 1),intent(in),depend(n_profiles) :: pressurelevels
+                real(kind=8) dimension(n_profiles,n_layers),intent(in),depend(n_profiles,n_layers) :: pressurelayers
+                real(kind=8) dimension(n_profiles,n_layers),intent(in),depend(n_profiles,n_layers) :: temperaturelayers
+                real(kind=8) dimension(n_profiles,n_layers),intent(in),depend(n_profiles,n_layers) :: humiditylayers
+                real(kind=8) dimension(n_profiles,n_layers),intent(in),depend(n_profiles,n_layers) :: ozoneconclayers
+                real(kind=8) dimension(n_profiles,n_layers),intent(in),depend(n_profiles,n_layers) :: co2conclayers
+                real(kind=8) dimension(n_profiles,n_layers,n_aerosols),intent(in),depend(n_profiles,n_layers) :: aerosoleffectiveradius
+                real(kind=8) dimension(n_profiles,n_layers,n_aerosols),intent(in),depend(n_profiles,n_layers,n_aerosols) :: aerosolconcentration
                 integer dimension(n_profiles,n_aerosols),intent(in),depend(n_profiles,n_aerosols) :: aerosoltype
-                real(kind=8) dimension(n_layers,n_profiles,n_clouds),intent(in),depend(n_layers,n_profiles) :: cloudeffectiveradius
-                real(kind=8) dimension(n_layers,n_profiles,n_clouds),intent(in),depend(n_layers,n_profiles,n_clouds) :: cloudconcentration
+                real(kind=8) dimension(n_profiles,n_layers,n_clouds),intent(in),depend(n_profiles,n_layers) :: cloudeffectiveradius
+                real(kind=8) dimension(n_profiles,n_layers,n_clouds),intent(in),depend(n_profiles,n_layers,n_clouds) :: cloudconcentration
                 integer dimension(n_profiles,n_clouds),intent(in),depend(n_profiles,n_clouds) :: cloudtype
-                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: cloudfraction
+                real(kind=8) dimension(n_profiles,n_layers),intent(in),depend(n_profiles,n_layers) :: cloudfraction
                 integer dimension(n_profiles),intent(in),depend(n_profiles) :: climatology
-                real(kind=8) dimension(4,n_profiles),intent(in),depend(n_profiles) :: surfacetemperatures
-                real(kind=8) dimension(4,n_profiles),intent(in),depend(n_profiles) :: surfacefractions
+                real(kind=8) dimension(n_profiles,4),intent(in),depend(n_profiles) :: surfacetemperatures
+                real(kind=8) dimension(n_profiles,4),intent(in),depend(n_profiles) :: surfacefractions
                 real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: lai
                 real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: salinity
                 real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: windspeed10m
@@ -48,9 +48,9 @@ python module pycrtm ! in
                 integer dimension(n_profiles),intent(in),depend(n_profiles) :: snowtype
                 integer dimension(n_profiles),intent(in),depend(n_profiles) :: icetype
                 integer intent(in) :: nthreads
-                real(kind=8) dimension(nchan,n_profiles),intent(out),depend(nchan,n_profiles) :: outtb
-                real(kind=8) dimension(nchan,n_layers,n_profiles),intent(out),depend(nchan,n_layers,n_profiles) :: outtransmission
-                real(kind=8) dimension(nchan,n_profiles),intent(out),depend(nchan,n_profiles) :: emissivity
+                real(kind=8) dimension(n_profiles,nchan),intent(out),depend(n_profiles,nchan) :: outtb
+                real(kind=8) dimension(n_profiles,nchan,n_layers),intent(out),depend(n_profiles,nchan,n_layers) :: outtransmission
+                real(kind=8) dimension(n_profiles,nchan),intent(out),depend(n_profiles,nchan) :: emissivity
             end subroutine wrap_forward
             subroutine wrap_k_matrix(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,year,month,day,nchan,n_profiles,n_layers,n_aerosols,n_clouds,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,cloudfraction,climatology,surfacetemperatures,surfacefractions,lai,salinity,windspeed10m,winddirection10m,n_absorbers,landtype,soiltype,vegtype,watertype,snowtype,icetype,outtb,outtransmission,temperaturejacobian,humidityjacobian,ozonejacobian,emissivity,nthreads) ! in :pycrtm:pycrtm.f90:pycrtm
                 use crtm_module
@@ -59,31 +59,31 @@ python module pycrtm ! in
                 real(kind=8) dimension(n_profiles),intent(in) :: zenithangle
                 real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: scanangle
                 real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: azimuthangle
-                real(kind=8) dimension(2,n_profiles),intent(in),depend(n_profiles) :: solarangle
+                real(kind=8) dimension(n_profiles,2),intent(in),depend(n_profiles) :: solarangle
                 integer dimension(n_profiles),intent(in),depend(n_profiles) :: year
                 integer dimension(n_profiles),intent(in),depend(n_profiles) :: month
                 integer dimension(n_profiles),intent(in),depend(n_profiles) :: day
                 integer intent(in) :: nchan
                 integer, optional,intent(in),check(len(zenithangle)>=n_profiles),depend(zenithangle) :: n_profiles=len(zenithangle)
-                integer, optional,intent(in),check((shape(pressurelevels,0)-1)==n_layers),depend(pressurelevels) :: n_layers=(shape(pressurelevels,0)-1)
+                integer, optional,intent(in),check((shape(pressurelevels,1)-1)==n_layers),depend(pressurelevels) :: n_layers=(shape(pressurelevels,1)-1)
                 integer, optional,intent(in),check(shape(aerosoleffectiveradius,2)==n_aerosols),depend(aerosoleffectiveradius) :: n_aerosols=shape(aerosoleffectiveradius,2)
                 integer, optional,intent(in),check(shape(cloudeffectiveradius,2)==n_clouds),depend(cloudeffectiveradius) :: n_clouds=shape(cloudeffectiveradius,2)
-                real(kind=8) dimension(n_layers + 1,n_profiles),intent(in),depend(n_profiles) :: pressurelevels
-                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: pressurelayers
-                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: temperaturelayers
-                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: humiditylayers
-                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: ozoneconclayers
-                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: co2conclayers
-                real(kind=8) dimension(n_layers,n_profiles,n_aerosols),intent(in),depend(n_layers,n_profiles) :: aerosoleffectiveradius
-                real(kind=8) dimension(n_layers,n_profiles,n_aerosols),intent(in),depend(n_layers,n_profiles,n_aerosols) :: aerosolconcentration
+                real(kind=8) dimension(n_profiles,n_layers + 1),intent(in),depend(n_profiles) :: pressurelevels
+                real(kind=8) dimension(n_profiles,n_layers),intent(in),depend(n_profiles,n_layers) :: pressurelayers
+                real(kind=8) dimension(n_profiles,n_layers),intent(in),depend(n_profiles,n_layers) :: temperaturelayers
+                real(kind=8) dimension(n_profiles,n_layers),intent(in),depend(n_profiles,n_layers) :: humiditylayers
+                real(kind=8) dimension(n_profiles,n_layers),intent(in),depend(n_profiles,n_layers) :: ozoneconclayers
+                real(kind=8) dimension(n_profiles,n_layers),intent(in),depend(n_profiles,n_layers) :: co2conclayers
+                real(kind=8) dimension(n_profiles,n_layers,n_aerosols),intent(in),depend(n_profiles,n_layers) :: aerosoleffectiveradius
+                real(kind=8) dimension(n_profiles,n_layers,n_aerosols),intent(in),depend(n_profiles,n_layers,n_aerosols) :: aerosolconcentration
                 integer dimension(n_profiles,n_aerosols),intent(in),depend(n_profiles,n_aerosols) :: aerosoltype
-                real(kind=8) dimension(n_layers,n_profiles,n_clouds),intent(in),depend(n_layers,n_profiles) :: cloudeffectiveradius
-                real(kind=8) dimension(n_layers,n_profiles,n_clouds),intent(in),depend(n_layers,n_profiles,n_clouds) :: cloudconcentration
+                real(kind=8) dimension(n_profiles,n_layers,n_clouds),intent(in),depend(n_profiles,n_layers) :: cloudeffectiveradius
+                real(kind=8) dimension(n_profiles,n_layers,n_clouds),intent(in),depend(n_profiles,n_layers,n_clouds) :: cloudconcentration
                 integer dimension(n_profiles,n_clouds),intent(in),depend(n_profiles,n_clouds) :: cloudtype
-                real(kind=8) dimension(n_layers,n_profiles),intent(in),depend(n_layers,n_profiles) :: cloudfraction
+                real(kind=8) dimension(n_profiles,n_layers),intent(in),depend(n_profiles,n_layers) :: cloudfraction
                 integer dimension(n_profiles),intent(in),depend(n_profiles) :: climatology
-                real(kind=8) dimension(4,n_profiles),intent(in),depend(n_profiles) :: surfacetemperatures
-                real(kind=8) dimension(4,n_profiles),intent(in),depend(n_profiles) :: surfacefractions
+                real(kind=8) dimension(n_profiles,4),intent(in),depend(n_profiles) :: surfacetemperatures
+                real(kind=8) dimension(n_profiles,4),intent(in),depend(n_profiles) :: surfacefractions
                 real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: lai
                 real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: salinity
                 real(kind=8) dimension(n_profiles),intent(in),depend(n_profiles) :: windspeed10m
@@ -95,12 +95,12 @@ python module pycrtm ! in
                 integer dimension(n_profiles),intent(in),depend(n_profiles) :: watertype
                 integer dimension(n_profiles),intent(in),depend(n_profiles) :: snowtype
                 integer dimension(n_profiles),intent(in),depend(n_profiles) :: icetype
-                real(kind=8) dimension(nchan,n_profiles),intent(out),depend(nchan,n_profiles) :: outtb
-                real(kind=8) dimension(nchan,n_layers,n_profiles),intent(out),depend(nchan,n_layers,n_profiles) :: outtransmission
-                real(kind=8) dimension(nchan,n_layers,n_profiles),intent(out),depend(nchan,n_layers,n_profiles) :: temperaturejacobian
-                real(kind=8) dimension(nchan,n_layers,n_profiles),intent(out),depend(nchan,n_layers,n_profiles) :: humidityjacobian
-                real(kind=8) dimension(nchan,n_layers,n_profiles),intent(out),depend(nchan,n_layers,n_profiles) :: ozonejacobian
-                real(kind=8) dimension(nchan,n_profiles),intent(out),depend(nchan,n_profiles) :: emissivity
+                real(kind=8) dimension(n_profiles,nchan),intent(out),depend(n_profiles,nchan) :: outtb
+                real(kind=8) dimension(n_profiles,nchan,n_layers),intent(out),depend(n_profiles,nchan,n_layers) :: outtransmission
+                real(kind=8) dimension(n_profiles,nchan,n_layers),intent(out),depend(n_profiles,nchan,n_layers) :: temperaturejacobian
+                real(kind=8) dimension(n_profiles,nchan,n_layers),intent(out),depend(n_profiles,nchan,n_layers) :: humidityjacobian
+                real(kind=8) dimension(n_profiles,nchan,n_layers),intent(out),depend(n_profiles,nchan,n_layers) :: ozonejacobian
+                real(kind=8) dimension(n_profiles,nchan),intent(out),depend(n_profiles,nchan) :: emissivity
                 integer intent(in) :: nthreads
             end subroutine wrap_k_matrix
         end module pycrtm
