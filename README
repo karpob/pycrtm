@@ -38,7 +38,7 @@ In addition to installing CRTM this script will patch the source fix some in in/
 some null pointers to make the k-matrix thread safe for OpenMP (kmatrix.patch).  
 
 Example to install CRTM in this directory under a subdirectory "lib":
-./setup_pycrtm.py  --install $PWD/lib/ --rtpath $PWD/lib/ --jproc 1 --inplace
+./setup_pycrtm.py  --install $PWD/lib/ --rtpath $PWD/lib/ --jproc 1 
 
 Once completed:
 $PWD/pycrtm.cpython-37m-PLATFORM.so <-- (will always reside here) f2py interface compiled by setup 
