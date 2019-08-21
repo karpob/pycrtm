@@ -68,17 +68,35 @@ class pyCRTM:
         self.TK = []
         self.QK = []
         self.O3K = []
+        self.Wavenumbers = []
+        self.wavenumbers = []
+        self.wavenumber = []
+        self.Wavenumber = []
+        self.frequencyGHz = []
+        self.wavelengthMicrons = []
+        self.wavelengthCm = []
         self.nChan = 0
         self.nThreads = 1
     def loadInst(self):
         if ( os.path.exists( os.path.join(self.coefficientPath, self.sensor_id+'.SpcCoeff.bin') ) ):
             o = readSpcCoeff(os.path.join(self.coefficientPath, self.sensor_id+'.SpcCoeff.bin'))
             self.nChan = o['n_Channels']
+            # For those who care to associate channel number with something physical:
+            # just to save sanity put the permutations of (W/w)avenumber(/s) in here so things just go.
+            self.wavenumbers = np.asarray(o['Wavenumber'])
+            self.wavenumber = self.wavenumbers
+            self.Wavenumber = self.wavenumbers 
+            self.Wavenumbers = self.wavenumbers
+            #For those more microwave oriented:
+            self.frequencyGHz = 29.9792458 * self.wavenumbers
+            self.wavelengthCm = 1.0/self.wavenumbers
+            # And those who aren't interferometer oriented (people who like um): 
+            self.wavelengthMicrons = 10000.0/self.wavenumbers
         else:
             print("Warning! {} doesn't exist!".format( os.path.join(self.coefficientPath, self.sensor_id+'.SpcCoeff.bin') ) )        
     def runDirect(self):
         items =dir(self.profiles) 
-        #print(pycrtm.__doc__)      
+        #print(pycrtm.__doc__) 
         self.Bt, layerOpticalDepths,\
         self.surfEmisRefl  = pycrtm.wrap_forward( self.coefficientPath, self.sensor_id,\
                         self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], self.nChan, \
@@ -124,10 +142,9 @@ if __name__ == "__main__":
     profiles = profilesCreate( 4, 92 )
     
     for i,c in enumerate(cases):
-        print('whir',i,c)
         h5 = h5py.File(os.path.join(thisDir, 'testCases','data',c) , 'r')
         profiles.Angles[i,0] = h5['zenithAngle'][()]
-        profiles.Angles[i,1] = h5['azimuthAngle'][()]
+        profiles.Angles[i,1] = 999.9 
         profiles.Angles[i,2] = 100.0  # 100 degrees zenith below horizon.
         profiles.Angles[i,3] = 0.0 # zero solar azimuth 
         profiles.Angles[i,4] = h5['scanAngle'][()]
@@ -136,9 +153,6 @@ if __name__ == "__main__":
         profiles.DateTimes[i,2] = 1
         profiles.Pi[i,:] = np.asarray(h5['pressureLevels'] )
         profiles.P[i,:] = np.asarray(h5['pressureLayers'][()])
-        print('hi P',profiles.P[i,:])
-        print('hi P again',  np.asarray(h5['pressureLayers']), np.asarray(h5['pressureLevels'])) 
- 
         profiles.T[i,:] = np.asarray(h5['temperatureLayers'])
         profiles.Q[i,:] = np.asarray(h5['humidityLayers'])
         profiles.O3[i,:] = np.asarray(h5['ozoneConcLayers'])
@@ -153,7 +167,7 @@ if __name__ == "__main__":
         profiles.climatology[i] = h5['climatology'][()]
         profiles.surfaceFractions[i,:] = h5['surfaceFractions']
         profiles.surfaceTemperatures[i,:] = h5['surfaceTemperatures']
-        profiles.S2m[i,1] = 0.33 # just use salinity out of S2m for the moment.
+        profiles.S2m[i,1] = 33.0 # just use salinity out of S2m for the moment.
         profiles.windSpeed10m[i] = 5.0
         profiles.windDirection10m[i] = h5['windDirection10m'][()]
         profiles.n_absorbers[i] = h5['n_absorbers'][()]
@@ -164,11 +178,12 @@ if __name__ == "__main__":
         profiles.surfaceTypes[i,3] = h5['waterType'][()]
         profiles.surfaceTypes[i,4] = h5['snowType'][()]
         profiles.surfaceTypes[i,5] = h5['iceType'][()]
+        profiles.LAI[i] = h5['LAI'][()]
         h5.close()
     crtmOb = pyCRTM()
     crtmOb.profiles = profiles
     crtmOb.coefficientPath = pathInfo['CRTM']['coeffs_dir']
-    crtmOb.sensor_id = 'cris_npp'
+    crtmOb.sensor_id = 'atms_npp'
     crtmOb.nThreads = 4
     crtmOb.loadInst()
     crtmOb.runDirect()
