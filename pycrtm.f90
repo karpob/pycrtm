@@ -124,7 +124,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
    err_stat = CRTM_Init( sensor_id,  chinfo, &
                         File_Path=coefficientPath, &
                         Load_CloudCoeff = cloudsOn, &  
-                        Load_AerosolCoeff = aerosolsOn, &  
+                        Load_AerosolCoeff = aerosolsOn, &
                         Quiet=.True. )
 
   IF ( err_stat /= SUCCESS ) THEN
@@ -289,6 +289,9 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     sfc%Ice_Type        = iceType(n) !FRESH_ICE_TYPE
     sfc%Ice_Temperature = surfaceTemperatures(n,4)
 
+    sfc%Wind_Speed = windSpeed10m(n)
+    sfc%Wind_Direction = windDirection10m(n)
+    sfc%Salinity = salinity(n)
    
     ! ==========================================================================
     ! STEP 8. **** CALL THE CRTM FUNCTIONS FOR THE CURRENT SENSOR ****
@@ -748,6 +751,10 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     sfc%Ice_Coverage    = surfaceFractions(n,4)
     sfc%Ice_Type        = iceType(n) !FRESH_ICE_TYPE
     sfc%Ice_Temperature = surfaceTemperatures(n,4)
+    
+    sfc%Wind_Speed = windSpeed10m(n)
+    sfc%Wind_Direction = windDirection10m(n)
+    sfc%Salinity = salinity(n)
     ! ==========================================================================
     ! STEP 8. **** CALL THE CRTM FUNCTIONS FOR THE CURRENT SENSOR ****
     !
