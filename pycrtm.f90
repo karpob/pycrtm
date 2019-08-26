@@ -557,7 +557,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   !$omp parallel do default(private) shared(emissivity,outTb)&
   !$omp& shared(temperatureJacobian,humidityJacobian)& 
   !$omp& shared(ozoneJacobian,outTransmission)&
-  !$omp& shared(N_Layers,N_Absorbers,N_CLOUDS_crtm, N_AEROSOLS_crtm)&
+  !$omp& shared(nChan, N_Layers,N_Absorbers,N_CLOUDS_crtm, N_AEROSOLS_crtm)&
   !$omp& shared(pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers)& 
   !$omp& shared(co2ConcLayers, cloudsOn, aerosolsOn, zenithAngle,scanAngle,azimuthAngle,solarAngle)& 
   !$omp& shared(aerosolEffectiveRadius, aerosolConcentration, aerosolType)& 
