@@ -68,6 +68,7 @@ class pyCRTM:
         self.TK = []
         self.QK = []
         self.O3K = []
+        self.CO2K = []
         self.Wavenumbers = []
         self.wavenumbers = []
         self.wavenumber = []
@@ -92,6 +93,8 @@ class pyCRTM:
             self.wavelengthCm = 1.0/self.wavenumbers
             # And those who aren't interferometer oriented (people who like um): 
             self.wavelengthMicrons = 10000.0/self.wavenumbers
+            self.wmo_sensor_id = o['wmo_sensor_id']
+            self.wmo_satellite_id = o['wmo_satellite_id']
         else:
             print("Warning! {} doesn't exist!".format( os.path.join(self.coefficientPath, self.sensor_id+'.SpcCoeff.bin') ) )        
     def runDirect(self):
@@ -109,11 +112,13 @@ class pyCRTM:
         self.TauLevels = np.zeros(layerOpticalDepths.shape)
         nprofile, nchan, nlay = layerOpticalDepths.shape
         # should use python threading here!
+        # TauLevels following RTTOV convention: 
+        # "Transmittance from each user pressure level to TOA." 
         for p in list(range(nprofile)):
             for c in list(range(nchan)):
                 self.TauLevels[p,c,:] = np.exp(-1.0*np.cumsum(layerOpticalDepths[p,c,:] ))
     def runK(self):
-        self.Bt, layerOpticalDepths, self.TK, self.QK, self.O3K,\
+        self.Bt, layerOpticalDepths, self.TK, self.QK, self.O3K, self.CO2K,\
         self.surfEmisRefl =  pycrtm.wrap_k_matrix(  self.coefficientPath, self.sensor_id,\
                         self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], self.nChan, \
                         self.profiles.Pi, self.profiles.P, self.profiles.T, self.profiles.Q, self.profiles.O3,\
@@ -126,6 +131,8 @@ class pyCRTM:
         self.TauLevels = np.zeros(layerOpticalDepths.shape)
         nprofile, nchan, nlay = layerOpticalDepths.shape
         # should use python threading here!
+        # TauLevels following RTTOV convention: 
+        # "Transmittance from each user pressure level to TOA." 
         for p in list(range(nprofile)):
             for c in list(range(nchan)):
                 self.TauLevels[p,c,:] = np.exp(-1.0*np.cumsum(layerOpticalDepths[p,c,:]))
