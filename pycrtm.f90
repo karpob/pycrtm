@@ -390,7 +390,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
                         surfaceTemperatures, surfaceFractions, LAI, salinity, windSpeed10m, windDirection10m, n_absorbers, & 
                         landType, soilType, vegType, waterType, snowType, iceType, &  
                         outTb, outTransmission, & 
-                        temperatureJacobian, humidityJacobian, ozoneJacobian, emissivity, nthreads )      
+                        temperatureJacobian, humidityJacobian, ozoneJacobian, co2Jacobian, emissivity, nthreads )      
 
   ! ============================================================================
   ! STEP 1. **** ENVIRONMENT SETUP FOR CRTM USAGE ****
@@ -438,6 +438,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   real(kind=8), intent(out) :: temperatureJacobian(N_profiles, nChan, N_LAYERS)
   real(kind=8), intent(out) ::  humidityJacobian(N_profiles, nChan, N_LAYERS)
   real(kind=8), intent(out) :: ozoneJacobian(N_profiles, nChan, N_LAYERS)
+  real(kind=8), intent(out) :: co2Jacobian(N_profiles, nChan, N_LAYERS)
   integer, intent(in) :: nthreads
 
   character(len=256) :: sensor_id(1)
@@ -556,7 +557,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   !$ call omp_set_num_threads(nthreads)
   !$omp parallel do default(private) shared(emissivity,outTb)&
   !$omp& shared(temperatureJacobian,humidityJacobian)& 
-  !$omp& shared(ozoneJacobian,outTransmission)&
+  !$omp& shared(ozoneJacobian,co2Jacobian,outTransmission)&
   !$omp& shared(nChan, N_Layers,N_Absorbers,N_CLOUDS_crtm, N_AEROSOLS_crtm)&
   !$omp& shared(pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers)& 
   !$omp& shared(co2ConcLayers, cloudsOn, aerosolsOn, zenithAngle,scanAngle,azimuthAngle,solarAngle)& 
@@ -796,6 +797,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
         temperatureJacobian(n, l, 1:n_layers) = atm_k(l, 1)%Temperature(1:n_layers)
         humidityJacobian(n, l, 1:n_layers) = atm_k(l, 1)%Absorber(1:n_layers, 1)
         ozoneJacobian(n, l, 1:n_layers) = atm_k(l, 1)%Absorber(1:n_layers, 2)
+        if(n_absorbers(n)>2) then
+            co2Jacobian(n,l, 1:n_layers) = atm_k(l,1)%Absorber(1:n_layers,3)
+        endif
         outTransmission(n, l, 1:n_layers) = rts(l, 1)%Layer_Optical_Depth
     enddo
     outTb(n,:) = rts(:,1)%Brightness_Temperature 

@@ -11,7 +11,7 @@ def main( a ):
     fe = open('crtm.stde','w')
     
     # remove previous source install directory
-    if(len(glob.glob('REL-*'))>0): shutil.rmtree(glob.glob('REL-*')[0])
+    #if(len(glob.glob('REL-*'))>0): shutil.rmtree(glob.glob('REL-*')[0])
  
     arch = a.arch
     compilerFlags = selectCompilerFlags(arch)
