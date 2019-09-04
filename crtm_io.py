@@ -1,4 +1,10 @@
 import os, struct, configparser 
+
+def crtmLevelsToLayers( pLevels ):
+    num = pLevels[1::] - pLevels[0:pLevels.shape[0]-1]
+    den = np.log(pLevels[1::]/pLevels[0:pLevels.shape[0]-1])
+    return num/den
+
 def readTauCoeffODPS(fname):
     """
     Read and ODPS coefficient file.
