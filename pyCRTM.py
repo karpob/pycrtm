@@ -57,6 +57,13 @@ def profilesCreate( nProfiles, nLevels, nAerosols=1, nClouds=1 ):
     profiles = namedtuple("Profiles", p.keys())(*p.values())
     return profiles
 
+def apply_avg(Pout, Pin, Xin):
+    """
+    Use LayerAvg function from CRTM to Interpolate User pressure Layers to Coefficient levels. 
+    """
+    Xout = pycrtm.applyavg(np.log(Pout),np.log(Pin),Xin)
+    return Xout
+
 class pyCRTM:
     def __init__(self):
         self.coefficientPath = ''

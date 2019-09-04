@@ -4,7 +4,7 @@
 python module pycrtm ! in 
     interface  ! in :pycrtm
         module pycrtm ! in :pycrtm:pycrtm.f90
-            subroutine wrap_forward(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,year,month,day,nchan,n_profiles,n_layers,n_aerosols,n_clouds,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,cloudfraction,climatology,surfacetemperatures,surfacefractions,lai,salinity,windspeed10m,winddirection10m,n_absorbers,landtype,soiltype,vegtype,watertype,snowtype,icetype,nthreads,outtb,outtransmission,emissivity) ! in :pycrtm:pycrtm.f90:pycrtm
+            subroutine wrap_forward(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,year,month,day,nchan,n_profiles,n_layers,n_aerosols,n_clouds,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,cloudfraction,climatology,surfacetemperatures,surfacefractions,lai,salinity,windspeed10m,winddirection10m,n_absorbers,landtype,soiltype,vegtype,watertype,snowtype,icetype,nthreads,outtb,outtransmission,emissivityreflectivity) ! in :pycrtm:pycrtm.f90:pycrtm
                 use crtm_module
                 character*(*) intent(in) :: coefficientpath
                 character*(*) intent(in) :: sensor_id_in
@@ -50,9 +50,9 @@ python module pycrtm ! in
                 integer intent(in) :: nthreads
                 real(kind=8) dimension(n_profiles,nchan),intent(out),depend(n_profiles,nchan) :: outtb
                 real(kind=8) dimension(n_profiles,nchan,n_layers),intent(out),depend(n_profiles,nchan,n_layers) :: outtransmission
-                real(kind=8) dimension(n_profiles,nchan),intent(out),depend(n_profiles,nchan) :: emissivity
+                real(kind=8) dimension(2,n_profiles,nchan),intent(out),depend(n_profiles,nchan) :: emissivityreflectivity
             end subroutine wrap_forward
-            subroutine wrap_k_matrix(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,year,month,day,nchan,n_profiles,n_layers,n_aerosols,n_clouds,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,cloudfraction,climatology,surfacetemperatures,surfacefractions,lai,salinity,windspeed10m,winddirection10m,n_absorbers,landtype,soiltype,vegtype,watertype,snowtype,icetype,outtb,outtransmission,temperaturejacobian,humidityjacobian,ozonejacobian,emissivity,nthreads) ! in :pycrtm:pycrtm.f90:pycrtm
+            subroutine wrap_k_matrix(coefficientpath,sensor_id_in,zenithangle,scanangle,azimuthangle,solarangle,year,month,day,nchan,n_profiles,n_layers,n_aerosols,n_clouds,pressurelevels,pressurelayers,temperaturelayers,humiditylayers,ozoneconclayers,co2conclayers,aerosoleffectiveradius,aerosolconcentration,aerosoltype,cloudeffectiveradius,cloudconcentration,cloudtype,cloudfraction,climatology,surfacetemperatures,surfacefractions,lai,salinity,windspeed10m,winddirection10m,n_absorbers,landtype,soiltype,vegtype,watertype,snowtype,icetype,outtb,outtransmission,temperaturejacobian,humidityjacobian,ozonejacobian,co2jacobian,emissivityreflectivity,nthreads) ! in :pycrtm:pycrtm.f90:pycrtm
                 use crtm_module
                 character*1024 intent(in) :: coefficientpath
                 character*(*) intent(in) :: sensor_id_in
@@ -100,9 +100,24 @@ python module pycrtm ! in
                 real(kind=8) dimension(n_profiles,nchan,n_layers),intent(out),depend(n_profiles,nchan,n_layers) :: temperaturejacobian
                 real(kind=8) dimension(n_profiles,nchan,n_layers),intent(out),depend(n_profiles,nchan,n_layers) :: humidityjacobian
                 real(kind=8) dimension(n_profiles,nchan,n_layers),intent(out),depend(n_profiles,nchan,n_layers) :: ozonejacobian
-                real(kind=8) dimension(n_profiles,nchan),intent(out),depend(n_profiles,nchan) :: emissivity
+                real(kind=8) dimension(n_profiles,nchan,n_layers),intent(out),depend(n_profiles,nchan,n_layers) :: co2jacobian
+                real(kind=8) dimension(2,n_profiles,nchan),intent(out),depend(n_profiles,nchan) :: emissivityreflectivity
                 integer intent(in) :: nthreads
             end subroutine wrap_k_matrix
+            subroutine layeravg(px1,px2,pz,interp_index) ! in :pycrtm:pycrtm.f90:pycrtm
+                real(kind=8) dimension(:),intent(in) :: px1
+                real(kind=8) dimension(:),intent(in) :: px2
+                real(kind=8) dimension(:,:),intent(out) :: pz
+                integer dimension(:,:),intent(out) :: interp_index
+            end subroutine layeravg
+            subroutine applyavg(ref_lnpressure,user_lnpressure,nref,nuser,xin,xout) ! in :pycrtm:pycrtm.f90:pycrtm
+                real(kind=8) dimension(nref),intent(in) :: ref_lnpressure
+                real(kind=8) dimension(nuser),intent(in) :: user_lnpressure
+                integer, optional,intent(in),check(len(ref_lnpressure)>=nref),depend(ref_lnpressure) :: nref=len(ref_lnpressure)
+                integer, optional,intent(in),check(len(user_lnpressure)>=nuser),depend(user_lnpressure) :: nuser=len(user_lnpressure)
+                real(kind=8) dimension(nuser),intent(in),depend(nuser) :: xin
+                real(kind=8) dimension(nref),intent(out),depend(nref) :: xout
+            end subroutine applyavg
         end module pycrtm
     end interface 
 end python module pycrtm
