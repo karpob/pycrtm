@@ -8,9 +8,52 @@ sys.path.insert(0,thisDir)
 from pycrtm import pycrtm
 from crtm_io import readSpcCoeff
 from collections import namedtuple
+# Absorber IDs taken from CRTM.
+gases = {}
+gases['Q']     = 1  # H2O for anyone not NWP focused ;)
+gases['CO2']   = 2
+gases['O3']    = 3
+gases['N2O']   = 4
+gases['CO']    = 5
+gases['CH4']   = 6
+gases['O2']    = 7
+gases['NO']    = 8
+gases['SO2']   = 9
+gases['NO2']   = 10
+gases['NH3']   = 11
+gases['HNO3']  = 12
+gases['OH']    = 13
+gases['HF']    = 14
+gases['HCl']   = 15
+gases['HBr']   = 16
+gases['HI']    = 17
+gases['ClO']   = 18
+gases['OCS']   = 19
+gases['H2CO']  = 20
+gases['HOCl']  = 21
+gases['N2']    = 22
+gases['HCN']   = 23
+gases['CH3l']  = 24
+gases['H2O2']  = 25
+gases['C2H2']  = 26
+gases['C2H6']  = 27
+gases['PH3']   = 28
+gases['COF2']  = 29
+gases['SF6']   = 30
+gases['H2S']   = 31
+gases['HCOOH'] = 32
+def profilesCreate( nProfiles, nLevels, nAerosols=1, nClouds=1, additionalGases=[] ):
+    keys  = [ 'P', 'T', 'Q', 'O3']
+    for g in additionalGases:
+        if g in list(gases.keys()) and g not in keys:
+            keys.append(g)
+        elif g == 'H2O' or g.lower() == 'water' or g=='ozone':
+            print("You worry too much, of course we have {}! Water and Ozone are always turned on.".format(g))
+        else: 
+            print("Warning! I don't know this gas: {}! I can't add it to the simulation!".format(g))
+            print("You could pick one of these instead:")
+            for gg in list(gases.keys()): print(gg)
 
-def profilesCreate( nProfiles, nLevels, nAerosols=1, nClouds=1 ):
-    keys  = [ 'P', 'T', 'Q', 'CO2', 'O3'] 
     p = {}
     for k in list(keys):
         p[k] = np.nan*np.ones([nProfiles,nLevels])
@@ -69,6 +112,9 @@ class pyCRTM:
         self.coefficientPath = ''
         self.sensor_id = ''
         self.profiles = []
+        self.traceConc = []
+        self.traceIds = []
+        self.usedGases = []
         self.Bt = []
         self.TauLevels = []
         self.surfEmisRefl = []
@@ -76,6 +122,9 @@ class pyCRTM:
         self.QK = []
         self.O3K = []
         self.CO2K = []
+        self.N2OK = []
+        self.CH4K = []
+        self.COK = []
         self.Wavenumbers = []
         self.wavenumbers = []
         self.wavenumber = []
@@ -104,14 +153,30 @@ class pyCRTM:
             self.wmo_satellite_id = o['wmo_satellite_id']
         else:
             print("Warning! {} doesn't exist!".format( os.path.join(self.coefficientPath, self.sensor_id+'.SpcCoeff.bin') ) )        
+    def setupGases(self):
+        max_abs = int(max(self.profiles.n_absorbers))
+        nprof, nlay = self.profiles.T.shape 
+        self.traceConc = np.zeros([nprof,nlay,max_abs])
+        self.traceIds = np.zeros(max_abs, dtype=np.int)
+        availableGases = list(gases.keys())
+        profileItems = list(self.profiles._asdict().keys())
+       
+        for p in profileItems:
+            if (p in availableGases):self.usedGases.append(p)
+        
+        for i,g in enumerate(self.usedGases):
+            self.traceConc[:,:,i] = self.profiles._asdict()[g][:,:]
+            self.traceIds[i] = gases[g]
+        
     def runDirect(self):
+        
+        self.setupGases() 
         items =dir(self.profiles) 
         #print(pycrtm.__doc__) 
         self.Bt, layerOpticalDepths,\
         self.surfEmisRefl  = pycrtm.wrap_forward( self.coefficientPath, self.sensor_id,\
                         self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], self.nChan, \
-                        self.profiles.Pi, self.profiles.P, self.profiles.T, self.profiles.Q, self.profiles.O3,\
-                        self.profiles.CO2,\
+                        self.profiles.Pi, self.profiles.P, self.profiles.T, self.traceConc,self.traceIds,\
                         self.profiles.aerosols[:,:,:,1], self.profiles.aerosols[:,:,:,0], self.profiles.aerosolType, \
                         self.profiles.clouds[:,:,:,1], self.profiles.clouds[:,:,:,0], self.profiles.cloudType, self.profiles.cloudFraction, self.profiles.climatology, \
                         self.profiles.surfaceTemperatures, self.profiles.surfaceFractions, self.profiles.LAI, self.profiles.S2m[:,1], self.profiles.windSpeed10m, self.profiles.windDirection10m, self.profiles.n_absorbers,\
@@ -125,15 +190,31 @@ class pyCRTM:
             for c in list(range(nchan)):
                 self.TauLevels[p,c,:] = np.exp(-1.0*np.cumsum(layerOpticalDepths[p,c,:] ))
     def runK(self):
-        self.Bt, layerOpticalDepths, self.TK, self.QK, self.O3K, self.CO2K,\
+        self.setupGases() 
+             
+        self.Bt, layerOpticalDepths, self.TK, traceK,\
         self.surfEmisRefl =  pycrtm.wrap_k_matrix(  self.coefficientPath, self.sensor_id,\
                         self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], self.nChan, \
-                        self.profiles.Pi, self.profiles.P, self.profiles.T, self.profiles.Q, self.profiles.O3,\
-                        self.profiles.CO2,\
+                        self.profiles.Pi, self.profiles.P, self.profiles.T, \
+                        self.traceConc, self.traceIds,\
                         self.profiles.aerosols[:,:,:,1], self.profiles.aerosols[:,:,:,0], self.profiles.aerosolType, \
                         self.profiles.clouds[:,:,:,1], self.profiles.clouds[:,:,:,0], self.profiles.cloudType, self.profiles.cloudFraction, self.profiles.climatology, \
                         self.profiles.surfaceTemperatures, self.profiles.surfaceFractions, self.profiles.LAI, self.profiles.S2m[:,1], self.profiles.windSpeed10m, self.profiles.windDirection10m, self.profiles.n_absorbers,\
                         self.profiles.surfaceTypes[:,0], self.profiles.surfaceTypes[:,1], self.profiles.surfaceTypes[:,2], self.profiles.surfaceTypes[:,3], self.profiles.surfaceTypes[:,4], self.profiles.surfaceTypes[:,5], self.nThreads )
+        for i,ids in enumerate(list(self.traceIds)):
+            # I think I can do something smarter here in python to contruct self.QK etc through an execute, or something along those lines?
+            if(ids == gases['Q']):   self.QK   = traceK[:,:,:,i]
+            if(ids == gases['O3']):  self.O3K  = traceK[:,:,:,i]
+            if(ids == gases['CH4']): self.CH4K = traceK[:,:,:,i]
+            if(ids == gases['CO2']): self.CO2K = traceK[:,:,:,i]
+            if(ids == gases['CO']):  self.COK  = traceK[:,:,:,i]
+            if(ids == gases['N2O']): self.N2OK = traceK[:,:,:,i]
+        # if we don't have any "weird" gases, empty out traceK,traceConc to save on RAM.
+        if not any(g in self.usedGases for g in  ['Q', 'O3', 'CH4', 'CO','CO2', 'N2O']):
+            print("saving on RAM")
+            self.traceK = []
+            self.traceConc = []     
+      
 
         self.TauLevels = np.zeros(layerOpticalDepths.shape)
         nprofile, nchan, nlay = layerOpticalDepths.shape
