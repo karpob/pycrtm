@@ -3,9 +3,9 @@ contains
 subroutine wrap_forward( coefficientPath, sensor_id_in, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, &
                         year, month, day, & 
-                        nChan, N_Profiles, N_LAYERS, N_aerosols, N_clouds, &
-                        pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
-                        co2ConcLayers, & 
+                        nChan, N_Profiles, N_LAYERS, N_aerosols, N_clouds, N_trace, &
+                        pressureLevels, pressureLayers, temperatureLayers, & 
+                        traceConcLayers, trace_IDs, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
                         cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology, & 
                         surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m, n_absorbers, & 
@@ -26,14 +26,14 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   character(len=*), intent(in) :: sensor_id_in
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
-  integer, intent(in) :: nChan, N_Profiles, N_Layers, N_aerosols, N_clouds
+  integer, intent(in) :: nChan, N_Profiles, N_Layers, N_aerosols, N_clouds, N_trace
   real(kind=8), intent(in) :: zenithAngle(n_profiles), scanAngle(n_profiles) 
   real(kind=8), intent(in) :: azimuthAngle(n_profiles), solarAngle(n_profiles,2)
   integer, intent(in) :: year(n_profiles), month(n_profiles), day(n_profiles) 
   real(kind=8), intent(in) :: pressureLevels(N_profiles, N_LAYERS+1)
   real(kind=8), intent(in) :: pressureLayers(N_profiles, N_LAYERS), temperatureLayers(N_Profiles,N_Layers)
-  real(kind=8), intent(in) ::humidityLayers(N_profiles,N_LAYERS), ozoneConcLayers(N_profiles,N_LAYERS)
-  real(kind=8), intent(in) :: co2ConcLayers(N_Profiles,N_layers)
+  real(kind=8), intent(in) :: traceConcLayers(N_Profiles,N_layers,N_trace)
+  integer, intent(in) :: trace_IDs(N_trace)
   real(kind=8), intent(in) :: aerosolEffectiveRadius(N_Profiles,N_layers, N_aerosols)
   real(kind=8), intent(in) :: aerosolConcentration(N_profiles,N_layers, N_aerosols)
   real(kind=8), intent(in) :: cloudEffectiveRadius(N_Profiles,N_layers, N_clouds)
@@ -72,7 +72,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   CHARACTER(256) :: message, version
   INTEGER :: err_stat, alloc_stat
   INTEGER :: n_channels, N_clouds_crtm, N_aerosols_crtm
-  INTEGER :: i, l, m, n, nc, ll,mm, nn, species
+  INTEGER :: i, l, m, n, nc, ll,mm, nn, species,i_abs
   logical :: cloudsOn, aerosolsOn
 
   ! ============================================================================
@@ -164,9 +164,9 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   !$ call omp_set_num_threads(nthreads)
   !$omp parallel do default(private) shared(chinfo,emissivityReflectivity,outTb,outTransmission)& 
   !$omp& shared(zenithAngle, scanAngle, azimuthAngle, solarAngle)&
-  !$omp& shared(nChan, N_Profiles, N_LAYERS, N_Clouds_crtm, N_aerosols_crtm)&
-  !$omp& shared(pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers)& 
-  !$omp& shared(co2ConcLayers)& 
+  !$omp& shared(nChan, N_Profiles, N_LAYERS, N_Clouds_crtm, N_aerosols_crtm, N_trace)&
+  !$omp& shared(pressureLevels, pressureLayers, temperatureLayers)& 
+  !$omp& shared(traceConcLayers,trace_IDs)& 
   !$omp& shared(aerosolEffectiveRadius, aerosolConcentration, aerosolType, cloudsOn, aerosolsOn)& 
   !$omp& shared(cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology)& 
   !$omp& shared(surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m, n_absorbers)& 
@@ -221,15 +221,22 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     !     respective structures below was done purely to keep the step-by-step
     !     instructions in this program relatively "clean".
     ! ------------------------------------------------------------------------
-    atm(1)%Absorber_Id(1:2)    = (/ H2O_ID                 , O3_ID /)
-    atm(1)%Absorber_Units(1:2) = (/ MASS_MIXING_RATIO_UNITS, VOLUME_MIXING_RATIO_UNITS /)
     ! ...Profile data
     atm(1)%Climatology = climatology(n)
     atm(1)%Level_Pressure = pressureLevels(n,:)
     atm(1)%Pressure = pressureLayers(n,:)
     atm(1)%Temperature = temperatureLayers(n,:)
-    atm(1)%Absorber(:,1) = humidityLayers(n,:)
-    atm(1)%Absorber(:,2) = ozoneConcLayers(n,:)
+   
+    do i_abs = 1,n_absorbers(n) 
+      atm(1)%Absorber(:,i_abs)      = traceConcLayers(n,:,i_abs)
+      atm(1)%Absorber_Id(i_abs)     = trace_IDs(i_abs)
+      if( trace_IDs(i_abs) == H2O_ID ) then 
+        atm(1)%absorber_units(i_abs) = MASS_MIXING_RATIO_UNITS
+      else 
+        atm(1)%absorber_units(i_abs)  = VOLUME_MIXING_RATIO_UNITS
+      endif
+    enddo
+
     if( aerosolsOn )  then
       do species = 1, N_aerosols_crtm
         atm(1)%Aerosol(species)%Type                = aerosolType(n, species)
@@ -246,11 +253,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
       atm(1)%Cloud_Fraction(:)            = cloudFraction(n,:)
     endif
 
-    if(n_absorbers(n) >2) then 
-      atm(1)%Absorber(:,3)     = co2ConcLayers(n,:)
-      atm(1)%Absorber_Id(3)    = CO2_ID
-      atm(1)%absorber_units(3) = VOLUME_MIXING_RATIO_UNITS
-    endif
+
 
 
     ! 6b. Geometry input
@@ -383,15 +386,15 @@ end subroutine wrap_forward
 subroutine wrap_k_matrix( coefficientPath, sensor_id_in, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, &  
                         year, month, day, & 
-                        nChan, N_profiles, N_LAYERS, N_aerosols, N_clouds, & 
-                        pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers, & 
-                        co2ConcLayers, & 
+                        nChan, N_profiles, N_LAYERS, N_aerosols, N_clouds, N_trace, & 
+                        pressureLevels, pressureLayers, temperatureLayers, & 
+                        traceConcLayers, trace_IDs, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
                         cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology, & 
                         surfaceTemperatures, surfaceFractions, LAI, salinity, windSpeed10m, windDirection10m, n_absorbers, & 
                         landType, soilType, vegType, waterType, snowType, iceType, &  
                         outTb, outTransmission, & 
-                        temperatureJacobian, humidityJacobian, ozoneJacobian, co2Jacobian, emissivityReflectivity, nthreads )      
+                        temperatureJacobian, traceJacobian, emissivityReflectivity, nthreads )      
 
   ! ============================================================================
   ! STEP 1. **** ENVIRONMENT SETUP FOR CRTM USAGE ****
@@ -413,7 +416,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   ! variables for interface
   character(len=1024), intent(in) :: coefficientPath
   character(len=*), intent(in) :: sensor_id_in
-  integer, intent(in) :: nChan, N_profiles, N_Layers, N_aerosols, N_clouds 
+  integer, intent(in) :: nChan, N_profiles, N_Layers, N_aerosols, N_clouds, N_trace 
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
   real(kind=8), intent(in) :: zenithAngle(N_profiles), scanAngle(N_profiles)
@@ -421,9 +424,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   integer, intent(in) :: year(n_profiles), month(n_profiles), day(n_profiles)
   real(kind=8), intent(in) :: pressureLevels(N_profiles, N_Layers+1)
   real(kind=8), intent(in) :: pressureLayers(N_profiles, N_layers), temperatureLayers(N_profiles, N_layers)
-  real(kind=8), intent(in) :: humidityLayers(N_profiles, N_layers)
-  real(kind=8), intent(in) :: ozoneConcLayers(N_profiles, N_layers)
-  real(kind=8), intent(in) :: co2ConcLayers(N_profiles, N_layers)
+  real(kind=8), intent(in) :: traceConcLayers(N_profiles, N_layers, N_trace)
+  integer, intent(in) :: trace_IDs(N_trace)
   real(kind=8), intent(in) :: aerosolEffectiveRadius(N_profiles,N_layers, N_aerosols)
   real(kind=8), intent(in) :: aerosolConcentration(N_profiles,N_layers, N_aerosols)
   real(kind=8), intent(in) :: cloudEffectiveRadius(N_profiles,N_layers, N_clouds) 
@@ -437,9 +439,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   real(kind=8), intent(out) :: outTb(N_profiles,nChan), emissivityReflectivity(2,N_profiles,nChan)
   real(kind=8), intent(out) :: outTransmission(N_profiles, nChan, N_LAYERS) 
   real(kind=8), intent(out) :: temperatureJacobian(N_profiles, nChan, N_LAYERS)
-  real(kind=8), intent(out) ::  humidityJacobian(N_profiles, nChan, N_LAYERS)
-  real(kind=8), intent(out) :: ozoneJacobian(N_profiles, nChan, N_LAYERS)
-  real(kind=8), intent(out) :: co2Jacobian(N_profiles, nChan, N_LAYERS)
+  real(kind=8), intent(out) :: traceJacobian(N_profiles, nChan, N_LAYERS, N_trace)
   integer, intent(in) :: nthreads
 
   character(len=256) :: sensor_id(1)
@@ -459,7 +459,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   CHARACTER(256) :: message, version
   INTEGER :: err_stat, alloc_stat
   INTEGER :: n_channels, N_aerosols_crtm, N_clouds_crtm
-  INTEGER :: l, m, n, nc, species
+  INTEGER :: l, m, n, nc, species, i_abs
   Logical :: cloudsOn, aerosolsOn
 
 
@@ -557,11 +557,11 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   ! openmp won't work for K-matrix. Should be a fix in future release of CRTM. 
   !$ call omp_set_num_threads(nthreads)
   !$omp parallel do default(private) shared(emissivityReflectivity,outTb)&
-  !$omp& shared(temperatureJacobian,humidityJacobian)& 
-  !$omp& shared(ozoneJacobian,co2Jacobian,outTransmission)&
-  !$omp& shared(nChan, N_Layers,N_Absorbers,N_CLOUDS_crtm, N_AEROSOLS_crtm)&
-  !$omp& shared(pressureLevels, pressureLayers, temperatureLayers, humidityLayers, ozoneConcLayers)& 
-  !$omp& shared(co2ConcLayers, cloudsOn, aerosolsOn, zenithAngle,scanAngle,azimuthAngle,solarAngle)& 
+  !$omp& shared(temperatureJacobian)& 
+  !$omp& shared(traceJacobian,outTransmission)&
+  !$omp& shared(nChan, N_Layers,N_Absorbers,N_CLOUDS_crtm, N_AEROSOLS_crtm, N_trace)&
+  !$omp& shared(pressureLevels, pressureLayers, temperatureLayers)& 
+  !$omp& shared(traceConcLayers, trace_IDs, cloudsOn, aerosolsOn, zenithAngle,scanAngle,azimuthAngle,solarAngle)& 
   !$omp& shared(aerosolEffectiveRadius, aerosolConcentration, aerosolType)& 
   !$omp& shared(cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology)& 
   !$omp& shared(surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m)& 
@@ -667,15 +667,21 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     !     respective structures below was done purely to keep the step-by-step
     !     instructions in this program relatively "clean".
     ! ------------------------------------------------------------------------
-    atm(1)%Climatology         = climatology(n)  
-    atm(1)%Absorber_Id(1:2)    = (/ H2O_ID                 , O3_ID /)
-    atm(1)%Absorber_Units(1:2) = (/ MASS_MIXING_RATIO_UNITS, VOLUME_MIXING_RATIO_UNITS /)
     ! ...Profile data
+    atm(1)%Climatology         = climatology(n)  
     atm(1)%Level_Pressure = pressureLevels(n,:)
     atm(1)%Pressure = pressureLayers(n,:)
     atm(1)%Temperature = temperatureLayers(n,:)
-    atm(1)%Absorber(:,1) = humidityLayers(n,:)
-    atm(1)%Absorber(:,2) = ozoneConcLayers(n,:)
+    do i_abs = 1,N_absorbers(n)
+        atm(1)%Absorber(:,i_abs)      = traceConcLayers(n,:,i_abs)
+        atm(1)%Absorber_Id(i_abs)     = trace_IDs(i_abs)
+        if ( trace_IDs(i_abs) == H2O_ID ) then
+            atm(1)%absorber_units(i_abs)  = MASS_MIXING_RATIO_UNITS
+        else 
+            atm(1)%absorber_units(i_abs)  = VOLUME_MIXING_RATIO_UNITS
+        endif
+    enddo
+
     if( aerosolsOn )  then
         do species = 1,N_aerosols_crtm
             atm(1)%Aerosol(species)%Type                = aerosolType(n,species)
@@ -693,11 +699,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     
     endif
 
-    if( n_absorbers(n) > 2 ) then 
-        atm(1)%Absorber(:,3)      = co2ConcLayers(n,:)
-        atm(1)%Absorber_Id(3)     = CO2_ID
-        atm(1)%absorber_units(3)  = VOLUME_MIXING_RATIO_UNITS
-    endif
     ! 6b. Geometry input
     ! ------------------
     ! All profiles are given the same value
@@ -790,11 +791,10 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! transfer jacobians out
     do l=1,nChan
         temperatureJacobian(n, l, 1:n_layers) = atm_k(l, 1)%Temperature(1:n_layers)
-        humidityJacobian(n, l, 1:n_layers) = atm_k(l, 1)%Absorber(1:n_layers, 1)
-        ozoneJacobian(n, l, 1:n_layers) = atm_k(l, 1)%Absorber(1:n_layers, 2)
-        if(n_absorbers(n)>2) then
-            co2Jacobian(n,l, 1:n_layers) = atm_k(l,1)%Absorber(1:n_layers,3)
-        endif
+        !jacobians of H2O, O3, etc... will be determined by the order in which they were assigned in atm. 
+        do i_abs=1,N_absorbers(n)
+            traceJacobian(n,l, 1:n_layers,i_abs) = atm_k(l,1)%Absorber(1:n_layers,i_abs)
+        enddo
         outTransmission(n, l, 1:n_layers) = rts(l, 1)%Layer_Optical_Depth
     enddo
     outTb(n,:) = rts(:,1)%Brightness_Temperature 
