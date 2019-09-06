@@ -103,7 +103,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   !
   ! 4a. Initialise all the sensors at once
   ! --------------------------------------
-  ! Karpowicz addition... if we have less than 0 for aerosol/cloud, don't turn on aerosols/clouds.
+  ! Figure out what needs allocating for Clouds and Aerosols. Are they on?
   if( all(aerosolType < 0) ) then
     N_AEROSOLS_crtm = 0
     aerosolsOn = .False.
@@ -119,32 +119,20 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     N_CLOUDS_crtm = N_clouds
     cloudsOn = .True. 
   endif
-  ! End Karpowicz change to CRTM-style interface.
-
-   err_stat = CRTM_Init( sensor_id,  chinfo, &
+  
+  err_stat = CRTM_Init( sensor_id,  chinfo, &
                         File_Path=coefficientPath, &
                         Load_CloudCoeff = cloudsOn, &  
                         Load_AerosolCoeff = aerosolsOn, &
                         Quiet=.True. )
-
-  IF ( err_stat /= SUCCESS ) THEN
-    message = 'Error initializing CRTM'
-    CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-    STOP
-  END IF
-
+  call check_allocate_status(err_stat,'Error Initializing CRTM')
 
   WRITE( *,'(/5x,"Initializing the CRTM...")' )
-
-  ! if aerosols or cloud concentrations specified as < -9999, don't load cloud/aerosol coefficients.
-
 
   ! 4b. Output some channel information
   ! -----------------------------------
   n_channels = CRTM_ChannelInfo_n_Channels(chinfo(1))
   WRITE( *,'(/5x,"Processing a total of ",i0," channels...")' ) n_channels
-
-
 
 
   ! ============================================================================
@@ -180,37 +168,17 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     !           are allocated in this example
     ! ----------------------------------------
     ! The input FORWARD structure
-     ALLOCATE( rts( n_channels, 1), STAT = alloc_stat )
-
-    IF ( alloc_stat /= 0 ) THEN
-      message = 'Error allocating structure arrays'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
-    ALLOCATE( atm( 1), STAT = alloc_stat )
-
-    IF ( alloc_stat /= 0 ) THEN
-      message = 'Error allocating atm arrays'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
-  ALLOCATE( sfc(1), STAT = alloc_stat )
-
-    IF ( alloc_stat /= 0 ) THEN
-      message = 'Error allocating sfc arrays'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
-
-
+    ALLOCATE( rts( n_channels, 1), STAT = alloc_stat )
+    call check_allocate_status(alloc_stat, "Error allocating Solution rts(n_channels,1).")
+    ! allocate 1 profile
+    ALLOCATE( atm(1), STAT = alloc_stat )
+    call check_allocate_status(alloc_stat, "Error allocating atm.")
+    ! allocate 1 surface
+    ALLOCATE( sfc(1), STAT = alloc_stat )
+    call check_allocate_status(alloc_stat, "Error allocating sfc.")
 
     CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_trace, N_CLOUDS_crtm, N_AEROSOLS_crtm )
-    IF ( ANY (.NOT. CRTM_Atmosphere_Associated(atm)) ) THEN
-      message = 'Error allocating CRTM Forward Atmosphere structure'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      !STOP
-    END IF
-  
+    call check_logical_status(ANY(.not. CRTM_Atmosphere_Associated(atm) ), "Failed in CRTM_Atmopsphere_Create")
 
     ! ==========================================================================
     ! STEP 6. **** ASSIGN INPUT DATA ****
@@ -252,9 +220,6 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
       enddo
       atm(1)%Cloud_Fraction(:)            = cloudFraction(n,:)
     endif
-
-
-
 
     ! 6b. Geometry input
     ! ------------------
@@ -299,19 +264,14 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! ==========================================================================
     ! STEP 8. **** CALL THE CRTM FUNCTIONS FOR THE CURRENT SENSOR ****
     !
-    !WRITE( *, '( /5x, "Calling the CRTM functions for ",a,"..." )' ) TRIM(sensor_id(1))
-    
     ! 8a. The forward model
     ! ---------------------
 
     ! Need this to get transmission out of solution, otherwise won't be allocated !!!
     call crtm_rtsolution_create( rts, n_layers )
-    if ( any(.not. crtm_rtsolution_associated( rts )) ) then
-        call display_message( subroutine_name, 'error allocating rts', err_stat)
-        !return
-    end if
+    call check_logical_status( any(.not. crtm_rtsolution_associated( rts ) ),'rts failed to create.') 
 
-    ! why did I put this here????
+    ! Need options if you want to pass in emissivity.
     !call crtm_options_create( options, nChan )
     !if ( any(.not. crtm_options_associated( options )) ) then 
     !    call display_message( subroutine_name, 'error allocating options', FAILURE)  
@@ -321,22 +281,15 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     !options%Use_Emissivity = .false.
     !options%Use_Direct_Reflectivity = .false.
 
-    !! Karpowicz addition to CRTM-style interface, switch to force scattering off when aerosols and clouds turned off.
-    !if (.not. cloudsOn .and. .not. aerosolsOn) then 
-    !    options%Include_Scattering = .false.
-    !end if 
-
     err_stat = CRTM_Forward( atm        , &  ! Input
                              sfc        , &  ! Input
                              geo        , &  ! Input
                              chinfo, &  ! Input
                              rts ) !,    & ! Output
     !                        options = options ) 
-    IF ( err_stat /= SUCCESS ) THEN
-      message = 'Error calling CRTM Forward Model for '//TRIM(sensor_id(1))
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
+
+    call check_allocate_status(err_stat, "Error Calling CRTM_Forward.")
+
     ! ============================================================================
     ! 8c. **** OUTPUT THE RESULTS TO SCREEN **** (Or transfer it into a series of arrays out of this thing!)
     !
@@ -363,24 +316,23 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! ==========================================================================
     CALL CRTM_Atmosphere_Destroy(atm)
     call crtm_rtsolution_destroy(rts)
-    deallocate(atm,sfc)
+    deallocate(atm,stat=alloc_stat)
+    call check_allocate_status(alloc_stat,"Atm failed to deallocate.")
+    deallocate(sfc, stat=alloc_stat)
+    call check_allocate_status(alloc_stat,"Sfc failed to deallocate.")
     DEALLOCATE(rts, STAT = alloc_stat)
+    call check_allocate_status(alloc_stat,"Rts failed to deallocate.")
   END DO Profile_Loop
   !$omp end parallel do
-
-  
   
   ! ==========================================================================
   ! 10. **** DESTROY THE CRTM ****
   !
   WRITE( *, '( /5x, "Destroying the CRTM..." )' )
   err_stat = CRTM_Destroy( chinfo )
-  IF ( err_stat /= SUCCESS ) THEN
-    message = 'Error destroying CRTM'
-    CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-    STOP
-  END IF
-  ! ==========================================================================
+  call check_allocate_status(err_stat, 'Error Destroying the CRTM')
+  write(*,*)'wrap_forward done!'
+
 end subroutine wrap_forward
 
 subroutine wrap_k_matrix( coefficientPath, sensor_id_in, & 
@@ -501,6 +453,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   !
   ! 4a. Initialise all the sensors at once
   ! --------------------------------------
+  ! figure out how to allocate aerosols/clouds and are the even turned on by the user?
   if( all(aerosolType < 0) ) then
     N_AEROSOLS_crtm = 0
     aerosolsOn = .False.
@@ -518,44 +471,22 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   endif
 
   WRITE( *,'(/5x,"Initializing the CRTM...")' )
- 
- ! if aerosols or cloud concentrations specified as < -9999, don't load cloud/aerosol coefficients.
 
   err_stat = CRTM_Init( sensor_id,  chinfo, &
                         File_Path=coefficientPath, &
                         Load_CloudCoeff = cloudsOn, &  
                         Load_AerosolCoeff = aerosolsOn, &  
                         Quiet=.True. )
-
-
-  IF ( err_stat /= SUCCESS ) THEN
-    message = 'Error initializing CRTM'
-    CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-    STOP
-  END IF
+  call check_allocate_status(err_stat, 'Error initializing CRTM')
 
   ! 4b. Output some channel information
   ! -----------------------------------
   n_channels = CRTM_ChannelInfo_n_Channels(chinfo(1))
   WRITE( *,'(/5x,"Processing a total of ",i0," channels...")' ) n_channels
   WRITE( *,'(7x,i0," from ",a)' )  CRTM_ChannelInfo_n_Channels(chinfo(1)), TRIM(sensor_id(1))
-  ! ============================================================================
 
-    ! 5c. Allocate the STRUCTURE INTERNALS
-    !     NOTE: Only the Atmosphere structures
-    !           are allocated in this example
-    ! ----------------------------------------
-    ! The input FORWARD structure
-
-!    CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_trace, N_CLOUDS, N_AEROSOLS )
-!    IF ( ANY(.NOT. CRTM_Atmosphere_Associated(atm)) ) THEN
-!      message = 'Error allocating CRTM Forward Atmosphere structure'
-!      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-!      STOP
-!    END IF
   ! Begin loop over sensors
   ! ----------------------
-  ! openmp won't work for K-matrix. Should be a fix in future release of CRTM. 
   !$ call omp_set_num_threads(nthreads)
   !$omp parallel do default(private) shared(emissivityReflectivity,outTb)&
   !$omp& shared(temperatureJacobian)& 
@@ -572,9 +503,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
  
   !$omp& num_threads(nthreads) 
   Profile_Loop: DO n = 1, N_profiles
-
-
-
   
     ! ==========================================================================
     ! STEP 5. **** ALLOCATE STRUCTURE ARRAYS ****
@@ -587,46 +515,23 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     
     ! 5b. Allocate the ARRAYS
     ! -----------------------
-    allocate(atm(1), sfc(1), STAT = alloc_stat)
-    IF (alloc_stat /= 0 ) THEN
-      message = 'Error allocating atm, sfc'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    else 
-    END IF
+    allocate(atm(1), STAT = alloc_stat)
+    call check_allocate_status(alloc_stat,'Error allocating atm(1)')
 
+    allocate(sfc(1), STAT = alloc_stat)
+    call check_allocate_status(alloc_stat,'Error allocating sfc(1)')
 
     ALLOCATE( rts( n_channels, 1 ), STAT = alloc_stat )
-    IF (alloc_stat /= 0 ) THEN
-      message = 'Error allocating rts'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    else 
-    END IF
-
+    call check_allocate_status(alloc_stat,'Error allocating rts(n_channels,1)')
 
     ALLOCATE( atm_K( n_channels, 1 ), STAT = alloc_stat )
-    IF (alloc_stat /= 0 ) THEN
-      message = 'Error allocating atm_K'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
-
-
+    call check_allocate_status(alloc_stat,'Error allocating atm_k')
 
     ALLOCATE( sfc_K( n_channels, 1 ), STAT = alloc_stat )
-    IF (alloc_stat /= 0 ) THEN
-      message = 'Error allocating sfc_K'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
+    call check_allocate_status(alloc_stat,'Error allocating sfc_k')
 
     ALLOCATE( rts_K( n_channels, 1 ), STAT = alloc_stat )
-    IF (alloc_stat /= 0 ) THEN
-      message = 'Error allocating rts_K'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
+    call check_allocate_status(alloc_stat,'Error allocating rts_k')
 
     ! 5c. Allocate the STRUCTURE INTERNALS
     !     NOTE: Only the Atmosphere structures
@@ -634,31 +539,17 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! ----------------------------------------
     ! The input FORWARD structure
     CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_trace, N_CLOUDS_crtm, N_AEROSOLS_crtm )
-    IF ( ANY(.NOT. CRTM_Atmosphere_Associated(atm)) ) THEN
-      message = 'Error allocating CRTM Forward Atmosphere structure'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
+    call check_logical_status(ANY(.NOT. CRTM_Atmosphere_Associated(atm)), 'Error in CRTM_Atmosphere_Create Atm()')
 
     ! The output K-MATRIX structure
     CALL CRTM_Atmosphere_Create( atm_K, N_LAYERS, N_trace, N_CLOUDS_crtm, N_AEROSOLS_crtm )
-    IF ( ANY(.NOT. CRTM_Atmosphere_Associated(atm_K)) ) THEN
-      message = 'Error allocating CRTM K-matrix Atmosphere structure'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
+    call check_logical_status(ANY(.NOT. CRTM_Atmosphere_Associated(atm_K)),  'Error in CRTM_Atmosphere_Create Atm_k()')
 
     call crtm_rtsolution_create( rts, n_layers )
-    if ( any(.not. crtm_rtsolution_associated( rts )) ) then
-        call display_message( subroutine_name, 'error allocating rts', err_stat)
-        !return
-    end if
+    call check_logical_status(any(.not. crtm_rtsolution_associated( rts )),  'Error in crtm_rtsolution_create rts()')
     
     call crtm_rtsolution_create( rts_k, n_layers )
-    if ( any(.not. crtm_rtsolution_associated( rts_k )) ) then
-        call display_message( subroutine_name, 'error allocating rts_k', err_stat)
-        !return
-    end if
+    call check_logical_status(any(.not. crtm_rtsolution_associated( rts_k )),  'Error in crtm_rtsolution_create rts_k()')
 
     ! ==========================================================================
     ! STEP 6. **** ASSIGN INPUT DATA ****
@@ -714,9 +605,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
                                  Source_Zenith_Angle  = solarAngle(n,1),  & 
                                  Source_Azimuth_Angle = solarAngle(n,2) )
     ! ==========================================================================
-
-
-
 
     ! ==========================================================================
     ! STEP 7. **** INITIALIZE THE K-MATRIX ARGUMENTS ****
@@ -774,12 +662,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
                               atm_K      , &  ! K-MATRIX Output
                               sfc_K      , &  ! K-MATRIX Output
                               rts          )  ! FORWARD  Output
-    
-    IF ( err_stat /= SUCCESS ) THEN
-      message = 'Error calling CRTM K-Matrix Model'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
+    call check_allocate_status(err_stat,'Error calling the CRTM K-Matrix Model')    
 
     ! ==========================================================================
     ! STEP 9. **** CLEAN UP FOR NEXT SENSOR ****
@@ -809,31 +692,25 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     emissivityReflectivity(1,n,:) = rts(:,1)%Surface_Emissivity
     emissivityReflectivity(2,n,:) = rts(:,1)%Surface_Reflectivity
     CALL CRTM_Atmosphere_Destroy(atm)
-      if(alloc_stat /= SUCCESS) then
-        print*, 'atm destroy failed'
-        STOP
-    endif
     CALL CRTM_Atmosphere_Destroy(atm_k)
+
     DEALLOCATE(atm_k, STAT = alloc_stat)
-    if(alloc_stat /= SUCCESS) then
-        print*, 'atm_k destroy failed'
-        STOP
-    endif
-  DEALLOCATE(rts_K, sfc_k, STAT = alloc_stat)
-   if(alloc_stat /= SUCCESS) then
-        print*, 'rts_k dealloc failed'
-        STOP
-    endif
-   DEALLOCATE(rts, STAT = alloc_stat)
-   if(alloc_stat /= SUCCESS) then
-        print*, 'rts dealloc failed'
-        STOP
-    endif
-   DEALLOCATE(atm, sfc, STAT = alloc_stat)
-    if(alloc_stat /= SUCCESS) then
-        print*, 'dealloc atm,sfc failed'
-        STOP
-    endif
+    call check_allocate_status(alloc_stat, 'Atm_k deallocate failed')
+
+    DEALLOCATE(rts_K, STAT = alloc_stat)
+    call check_allocate_status(alloc_stat, 'rts_k deallocate failed')
+
+    DEALLOCATE(sfc_k, STAT = alloc_stat)
+    call check_allocate_status(alloc_stat, 'sfc_k deallocate failed')
+
+    DEALLOCATE(rts, STAT = alloc_stat)
+    call check_allocate_status(alloc_stat, 'rts deallocate failed')
+
+    DEALLOCATE(atm, STAT = alloc_stat)
+    call check_allocate_status(alloc_stat, 'atm deallocate failed')
+
+    DEALLOCATE(sfc, STAT = alloc_stat)
+    call check_allocate_status(alloc_stat, 'sfc deallocate failed')
     ! ==========================================================================
 
   END DO Profile_Loop
@@ -843,11 +720,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   !
   WRITE( *, '( /5x, "Destroying the CRTM..." )' )
   err_stat = CRTM_Destroy( chinfo )
-  IF ( err_stat /= SUCCESS ) THEN
-    message = 'Error destroying CRTM'
-    CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-    STOP
-  END IF
+  call check_allocate_status(err_stat, 'Error destroying the CRTM.')
   ! ==========================================================================
 end subroutine wrap_k_matrix
 
@@ -874,5 +747,24 @@ end subroutine wrap_k_matrix
                            * Xin(interp_index(1,k):interp_index(2,k)) )
     END DO
   end subroutine applyAvg
+
+  subroutine check_allocate_status(alloc_stat,message)
+    integer :: alloc_stat
+    character(len=*) :: message
+    IF ( alloc_stat /= 0 ) THEN
+      write(*,*) message
+      STOP
+    END IF
+  end subroutine check_allocate_status
+
+  subroutine check_logical_status(stat,message)
+    logical :: stat
+    character(len=*) :: message
+    IF ( stat ) THEN
+      write(*,*) message
+      STOP
+    END IF
+  end subroutine check_logical_status
+
 
 end module pycrtm
