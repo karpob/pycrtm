@@ -95,7 +95,6 @@ def profilesCreate( nProfiles, nLevels, nAerosols=1, nClouds=1, additionalGases=
 
     p['windSpeed10m'] = np.zeros([nProfiles])
     p['windDirection10m'] = np.zeros([nProfiles])
-    p['n_absorbers'] = np.zeros([nProfiles])
 
     profiles = namedtuple("Profiles", p.keys())(*p.values())
     return profiles
@@ -158,16 +157,19 @@ class pyCRTM:
         #If this has been run by previous call to runK or runDirect, don't run it again!
         if(len(self.traceIds)>0): return
 
-        max_abs = int(max(self.profiles.n_absorbers))
+        # Figure out what gases the user has defined in profile
+        availableGases = list(gases.keys())
+        profileItems = list(self.profiles._asdict().keys())
+        for p in profileItems:
+            if (p in availableGases):self.usedGases.append(p)
+
+        #Set the size of the trace gas array. 
+        max_abs = len(self.usedGases)
         nprof, nlay = self.profiles.T.shape 
         self.traceConc = np.zeros([nprof,nlay,max_abs])
         self.traceIds = np.zeros(max_abs, dtype=np.int)
-        availableGases = list(gases.keys())
-        profileItems = list(self.profiles._asdict().keys())
-       
-        for p in profileItems:
-            if (p in availableGases):self.usedGases.append(p)
-        
+
+        #Fill array with what the user specified in profile.
         for i,g in enumerate(self.usedGases):
             self.traceConc[:,:,i] = self.profiles._asdict()[g][:,:]
             self.traceIds[i] = gases[g]
@@ -183,7 +185,7 @@ class pyCRTM:
                         self.profiles.Pi, self.profiles.P, self.profiles.T, self.traceConc,self.traceIds,\
                         self.profiles.aerosols[:,:,:,1], self.profiles.aerosols[:,:,:,0], self.profiles.aerosolType, \
                         self.profiles.clouds[:,:,:,1], self.profiles.clouds[:,:,:,0], self.profiles.cloudType, self.profiles.cloudFraction, self.profiles.climatology, \
-                        self.profiles.surfaceTemperatures, self.profiles.surfaceFractions, self.profiles.LAI, self.profiles.S2m[:,1], self.profiles.windSpeed10m, self.profiles.windDirection10m, self.profiles.n_absorbers,\
+                        self.profiles.surfaceTemperatures, self.profiles.surfaceFractions, self.profiles.LAI, self.profiles.S2m[:,1], self.profiles.windSpeed10m, self.profiles.windDirection10m,\
                         self.profiles.surfaceTypes[:,0], self.profiles.surfaceTypes[:,1], self.profiles.surfaceTypes[:,2], self.profiles.surfaceTypes[:,3], self.profiles.surfaceTypes[:,4], self.profiles.surfaceTypes[:,5], self.nThreads )
         self.TauLevels = np.zeros(layerOpticalDepths.shape)
         nprofile, nchan, nlay = layerOpticalDepths.shape
@@ -203,7 +205,7 @@ class pyCRTM:
                         self.traceConc, self.traceIds,\
                         self.profiles.aerosols[:,:,:,1], self.profiles.aerosols[:,:,:,0], self.profiles.aerosolType, \
                         self.profiles.clouds[:,:,:,1], self.profiles.clouds[:,:,:,0], self.profiles.cloudType, self.profiles.cloudFraction, self.profiles.climatology, \
-                        self.profiles.surfaceTemperatures, self.profiles.surfaceFractions, self.profiles.LAI, self.profiles.S2m[:,1], self.profiles.windSpeed10m, self.profiles.windDirection10m, self.profiles.n_absorbers,\
+                        self.profiles.surfaceTemperatures, self.profiles.surfaceFractions, self.profiles.LAI, self.profiles.S2m[:,1], self.profiles.windSpeed10m, self.profiles.windDirection10m,\
                         self.profiles.surfaceTypes[:,0], self.profiles.surfaceTypes[:,1], self.profiles.surfaceTypes[:,2], self.profiles.surfaceTypes[:,3], self.profiles.surfaceTypes[:,4], self.profiles.surfaceTypes[:,5], self.nThreads )
         for i,ids in enumerate(list(self.traceIds)):
             # I think I can do something smarter here in python to contruct self.QK etc through an execute, or something along those lines?
@@ -269,7 +271,6 @@ if __name__ == "__main__":
         profiles.S2m[i,1] = 33.0 # just use salinity out of S2m for the moment.
         profiles.windSpeed10m[i] = 5.0
         profiles.windDirection10m[i] = h5['windDirection10m'][()]
-        profiles.n_absorbers[i] = h5['n_absorbers'][()]
         # land, soil, veg, water, snow, ice
         profiles.surfaceTypes[i,0] = h5['landType'][()]
         profiles.surfaceTypes[i,1] = h5['soilType'][()]
