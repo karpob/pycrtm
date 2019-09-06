@@ -137,16 +137,16 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
 
   ! ============================================================================
 
-    ! ==========================================================================
-    ! STEP 5. **** ALLOCATE STRUCTURE ARRAYS ****
-    !
-    ! 5a. Determine the number of channels
-    !     for the current sensor
-    ! ------------------------------------
-    n_channels = CRTM_ChannelInfo_n_Channels(chinfo(1))
-    
-    ! 5b. Allocate the ARRAYS
-    ! -----------------------
+  ! ==========================================================================
+  ! STEP 5. **** ALLOCATE STRUCTURE ARRAYS ****
+  !
+  ! 5a. Determine the number of channels
+  !     for the current sensor
+  ! ------------------------------------
+  n_channels = CRTM_ChannelInfo_n_Channels(chinfo(1))
+  
+  ! 5b. Allocate the ARRAYS
+  ! -----------------------
   ! Begin loop over profile
   ! ----------------------
   !$ call omp_set_num_threads(nthreads)
@@ -190,36 +190,11 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     !     instructions in this program relatively "clean".
     ! ------------------------------------------------------------------------
     ! ...Profile data
-    atm(1)%Climatology = climatology(n)
-    atm(1)%Level_Pressure = pressureLevels(n,:)
-    atm(1)%Pressure = pressureLayers(n,:)
-    atm(1)%Temperature = temperatureLayers(n,:)
-   
-    do i_abs = 1,N_trace 
-      atm(1)%Absorber(:,i_abs)      = traceConcLayers(n,:,i_abs)
-      atm(1)%Absorber_Id(i_abs)     = trace_IDs(i_abs)
-      if( trace_IDs(i_abs) == H2O_ID ) then 
-        atm(1)%absorber_units(i_abs) = MASS_MIXING_RATIO_UNITS
-      else 
-        atm(1)%absorber_units(i_abs)  = VOLUME_MIXING_RATIO_UNITS
-      endif
-    enddo
-
-    if( aerosolsOn )  then
-      do species = 1, N_aerosols_crtm
-        atm(1)%Aerosol(species)%Type                = aerosolType(n, species)
-        atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius(n,:, species)
-        atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(n,:, species)
-      enddo
-    endif
-    if( cloudsOn ) then
-      do species = 1, N_clouds_crtm
-        atm(1)%Cloud(species)%Type                = cloudType(n, species)
-        atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(n,:, species)
-        atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(n,:, species)
-      enddo
-      atm(1)%Cloud_Fraction(:)            = cloudFraction(n,:)
-    endif
+    call set_profile(atm, climatology(n), pressureLevels(n,:), pressureLayers(n,:), temperatureLayers(n,:),&
+                         traceConcLayers(n,:,:), trace_IDs(:), &
+                         aerosolType(n,:), aerosolEffectiveRadius(n,:,:), aerosolConcentration(n,:,:), & 
+                         cloudType(n,:), cloudEffectiveRadius(n,:,:), cloudConcentration(n,:,:), & 
+                         cloudFraction(n,:), N_trace, N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
 
     ! 6b. Geometry input
     ! ------------------
@@ -236,31 +211,10 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! ==========================================================================
     ! 4a.1 Profile #1
     ! ---------------
-    ! ...Land surface characteristics
-    sfc%Land_Coverage     = surfaceFractions(n,1)
-    sfc%Land_Type         = landType(n) !TUNDRA_SURFACE_TYPE
-    sfc%Land_Temperature  = surfaceTemperatures(n,1)
-    sfc%Lai               = LAI(n)
-    sfc%Soil_Type         = soilType(n) !COARSE_SOIL_TYPE
-    sfc%Vegetation_Type   = vegType(n) !GROUNDCOVER_VEGETATION_TYPE
-    ! ...Water surface characteristics
-    sfc%Water_Coverage    = surfaceFractions(n,2)
-    sfc%Water_Type        = waterType(n) !SEA_WATER_TYPE
-    sfc%Water_Temperature = surfaceTemperatures(n,2)
-
-    ! ...Snow coverage characteristics
-    sfc%Snow_Coverage    = surfaceFractions(n,3)
-    sfc%Snow_Type        = snowType(n) !FRESH_SNOW_TYPE
-    sfc%Snow_Temperature = surfaceTemperatures(n,3)
-    ! ...Ice surface characteristics
-    sfc%Ice_Coverage    = surfaceFractions(n,4)
-    sfc%Ice_Type        = iceType(n) !FRESH_ICE_TYPE
-    sfc%Ice_Temperature = surfaceTemperatures(n,4)
-
-    sfc%Wind_Speed = windSpeed10m(n)
-    sfc%Wind_Direction = windDirection10m(n)
-    sfc%Salinity = salinity(n)
-   
+    ! set the surface properties for the profile.
+    call set_surface(sfc, surfaceFractions(n,:), landType(n), surfaceTemperatures(n,:), LAI(n), & 
+                           soilType(n), vegType(n), waterType(n), snowType(n), iceType(n), &
+                           windSpeed10m(n), windDirection10m(n), salinity(n))
     ! ==========================================================================
     ! STEP 8. **** CALL THE CRTM FUNCTIONS FOR THE CURRENT SENSOR ****
     !
@@ -561,36 +515,12 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     !     instructions in this program relatively "clean".
     ! ------------------------------------------------------------------------
     ! ...Profile data
-    atm(1)%Climatology         = climatology(n)  
-    atm(1)%Level_Pressure = pressureLevels(n,:)
-    atm(1)%Pressure = pressureLayers(n,:)
-    atm(1)%Temperature = temperatureLayers(n,:)
-    do i_abs = 1,N_trace
-        atm(1)%Absorber(:,i_abs)      = traceConcLayers(n,:,i_abs)
-        atm(1)%Absorber_Id(i_abs)     = trace_IDs(i_abs)
-        if ( trace_IDs(i_abs) == H2O_ID ) then
-            atm(1)%absorber_units(i_abs)  = MASS_MIXING_RATIO_UNITS
-        else 
-            atm(1)%absorber_units(i_abs)  = VOLUME_MIXING_RATIO_UNITS
-        endif
-    enddo
-
-    if( aerosolsOn )  then
-        do species = 1,N_aerosols_crtm
-            atm(1)%Aerosol(species)%Type                = aerosolType(n,species)
-            atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius( n, :, species)
-            atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(n, :, species)
-        enddo
-    endif
-    if( cloudsOn ) then
-        do species = 1,N_clouds_crtm
-            atm(1)%Cloud(species)%Type                = cloudType(n, species)
-            atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(n,:, species)
-            atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(n,:, species)
-        enddo
-        atm(1)%Cloud_Fraction(:)            = cloudFraction(n, :)
-    
-    endif
+    call set_profile(atm, climatology(n), pressureLevels(n,:), pressureLayers(n,:), temperatureLayers(n,:),&
+                         traceConcLayers(n,:,:), trace_IDs(:), &
+                         aerosolType(n,:), aerosolEffectiveRadius(n,:,:), aerosolConcentration(n,:,:), & 
+                         cloudType(n,:), cloudEffectiveRadius(n,:,:), cloudConcentration(n,:,:), & 
+                         cloudFraction(n,:), N_trace, N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
+ 
 
     ! 6b. Geometry input
     ! ------------------
@@ -625,29 +555,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! 4a.1 Profile #1
     ! ---------------
     ! ...Land surface characteristics
-    sfc%Land_Coverage     = surfaceFractions(n,1)
-    sfc%Land_Type         = landType(n) !TUNDRA_SURFACE_TYPE
-    sfc%Land_Temperature  = surfaceTemperatures(n,1)
-    sfc%Lai               = LAI(n)
-    sfc%Soil_Type         = soilType(n) !COARSE_SOIL_TYPE
-    sfc%Vegetation_Type   = vegType(n) !GROUNDCOVER_VEGETATION_TYPE
-    ! ...Water surface characteristics
-    sfc%Water_Coverage    = surfaceFractions(n,2)
-    sfc%Water_Type        = waterType(n) !SEA_WATER_TYPE
-    sfc%Water_Temperature = surfaceTemperatures(n,2)
-
-    ! ...Snow coverage characteristics
-    sfc%Snow_Coverage    = surfaceFractions(n,3)
-    sfc%Snow_Type        = snowType(n) !FRESH_SNOW_TYPE
-    sfc%Snow_Temperature = surfaceTemperatures(n,3)
-    ! ...Ice surface characteristics
-    sfc%Ice_Coverage    = surfaceFractions(n,4)
-    sfc%Ice_Type        = iceType(n) !FRESH_ICE_TYPE
-    sfc%Ice_Temperature = surfaceTemperatures(n,4)
-    
-    sfc%Wind_Speed = windSpeed10m(n)
-    sfc%Wind_Direction = windDirection10m(n)
-    sfc%Salinity = salinity(n)
+     call set_surface(sfc, surfaceFractions(n,:), landType(n), surfaceTemperatures(n,:), LAI(n), & 
+                           soilType(n), vegType(n), waterType(n), snowType(n), iceType(n), &
+                           windSpeed10m(n), windDirection10m(n), salinity(n))
     ! ==========================================================================
     ! STEP 8. **** CALL THE CRTM FUNCTIONS FOR THE CURRENT SENSOR ****
     !
@@ -766,5 +676,84 @@ end subroutine wrap_k_matrix
     END IF
   end subroutine check_logical_status
 
+  subroutine set_profile(atm, climatology, pressureLevels, pressureLayers, temperatureLayers,&
+                         traceConcLayers, trace_IDs, aerosolType, aerosolEffectiveRadius, aerosolConcentration, & 
+                         cloudType, cloudEffectiveRadius, cloudConcentration, cloudFraction, & 
+                         N_trace, N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
+  USE CRTM_module
+  TYPE(CRTM_Atmosphere_type), intent(inout) :: atm(:)
+  integer :: climatology
+  real(kind=8) :: pressureLevels(:), pressureLayers(:), temperatureLayers(:), traceConcLayers(:,:)
+  integer :: trace_IDs(:), aerosolType(:)
+  real(kind=8) :: aerosolEffectiveRadius(:,:),aerosolConcentration(:,:)
+  integer :: cloudType(:)
+  real(kind=8) :: cloudEffectiveRadius(:,:), cloudConcentration(:,:), cloudFraction(:)
+  integer :: N_trace, N_aerosols_crtm, N_clouds_crtm
+  logical :: aerosolsOn, cloudsOn
+  integer :: i_abs,species  
+ 
+    atm(1)%Climatology = climatology
+    atm(1)%Level_Pressure = pressureLevels(:)
+    atm(1)%Pressure = pressureLayers(:)
+    atm(1)%Temperature = temperatureLayers(:)
+   
+    do i_abs = 1,N_trace 
+      atm(1)%Absorber(:,i_abs)      = traceConcLayers(:,i_abs)
+      atm(1)%Absorber_Id(i_abs)     = trace_IDs(i_abs)
+      if( trace_IDs(i_abs) == H2O_ID ) then 
+        atm(1)%absorber_units(i_abs) = MASS_MIXING_RATIO_UNITS
+      else 
+        atm(1)%absorber_units(i_abs)  = VOLUME_MIXING_RATIO_UNITS
+      endif
+    enddo
 
+    if( aerosolsOn )  then
+      do species = 1, N_aerosols_crtm
+        atm(1)%Aerosol(species)%Type                = aerosolType( species)
+        atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius(:, species)
+        atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(:, species)
+      enddo
+    endif
+    if( cloudsOn ) then
+      do species = 1, N_clouds_crtm
+        atm(1)%Cloud(species)%Type                = cloudType(species)
+        atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(:, species)
+        atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(:, species)
+      enddo
+      atm(1)%Cloud_Fraction(:)            = cloudFraction(:)
+    endif
+
+  end subroutine set_profile
+  subroutine set_surface(sfc, surfaceFractions, landType, surfaceTemperatures, LAI, soilType, & 
+                         vegType, waterType, snowType, iceType, windSpeed10m, windDirection10m, & 
+                         salinity)
+    USE CRTM_module  
+    TYPE(CRTM_Surface_type) :: sfc(:)
+    real(kind=8) :: surfaceFractions(:), surfaceTemperatures(:), LAI, windSpeed10m, windDirection10m, salinity
+    integer :: landType, soilType, vegType, waterType, snowType, iceType
+
+    sfc%Land_Coverage     = surfaceFractions(1)
+    sfc%Land_Type         = landType 
+    sfc%Land_Temperature  = surfaceTemperatures(1)
+    sfc%Lai               = LAI
+    sfc%Soil_Type         = soilType 
+    sfc%Vegetation_Type   = vegType 
+    ! ...Water surface characteristics
+    sfc%Water_Coverage    = surfaceFractions(2)
+    sfc%Water_Type        = waterType 
+    sfc%Water_Temperature = surfaceTemperatures(2)
+
+    ! ...Snow coverage characteristics
+    sfc%Snow_Coverage    = surfaceFractions(3)
+    sfc%Snow_Type        = snowType 
+    sfc%Snow_Temperature = surfaceTemperatures(3)
+    ! ...Ice surface characteristics
+    sfc%Ice_Coverage    = surfaceFractions(4)
+    sfc%Ice_Type        = iceType 
+    sfc%Ice_Temperature = surfaceTemperatures(4)
+
+    sfc%Wind_Speed = windSpeed10m
+    sfc%Wind_Direction = windDirection10m
+    sfc%Salinity = salinity
+  end subroutine set_surface
 end module pycrtm
