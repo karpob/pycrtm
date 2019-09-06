@@ -437,7 +437,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   integer, intent(in) :: landType(N_profiles), soilType(N_profiles), vegType(N_profiles), waterType(N_profiles) 
   integer, intent(in) :: snowType(N_profiles), iceType(N_profiles) 
   real(kind=8), intent(out) :: outTb(N_profiles,nChan), emissivityReflectivity(2,N_profiles,nChan)
-  real(kind=8), intent(out) :: skinK(N_profiles,nChan,5), emisK(N_profiles,nChan), reflK(N_profiles,nChan)
+  real(kind=8), intent(out) :: skinK(N_profiles,nChan,4), emisK(N_profiles,nChan), reflK(N_profiles,nChan)
   real(kind=8), intent(out) :: outTransmission(N_profiles, nChan, N_LAYERS) 
   real(kind=8), intent(out) :: temperatureJacobian(N_profiles, nChan, N_LAYERS)
   real(kind=8), intent(out) :: traceJacobian(N_profiles, nChan, N_LAYERS, N_trace)
@@ -801,7 +801,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
         skinK(n,l,2) = sfc_K(l,1)%Water_Temperature
         skinK(n,l,3) = sfc_K(l,1)%Ice_Temperature
         skinK(n,l,4) = sfc_K(l,1)%Snow_Temperature
-        skinK(n,l,5) = sfc_K(l,1)%Water_Temperature
         emisK(n,l) = RTS_K(l,1)%Surface_Emissivity
         reflK(n,l) = RTS_K(l,1)%Surface_Reflectivity
         outTransmission(n, l, 1:n_layers) = rts(l, 1)%Layer_Optical_Depth
