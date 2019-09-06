@@ -11,7 +11,7 @@ def main( a ):
     fe = open('crtm.stde','w')
     
     # remove previous source install directory
-    #if(len(glob.glob('REL-*'))>0): shutil.rmtree(glob.glob('REL-*')[0])
+    if(len(glob.glob('REL-*'))>0): shutil.rmtree(glob.glob('REL-*')[0])
  
     arch = a.arch
     compilerFlags = selectCompilerFlags(arch)
@@ -52,7 +52,7 @@ def main( a ):
         os.chdir(scriptDir)
 
         # remove untarred directory/now useless mess 
-        #shutil.rmtree(glob.glob('REL-*')[0])
+        shutil.rmtree(glob.glob('REL-*')[0])
 
     print("Modifying crtm.cfg")
     modifyOptionsCfg( 'crtm.cfg', scriptDir, installPath )
@@ -128,7 +128,6 @@ def downloadExtractTar( tarballPath, scriptDir ):
                this server is *insanely* slow.".format ('http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz'))
         urllib.request.urlretrieve("http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz", "crtm_v2.3.0.tar.gz") 
     print('tarballPath',tarballPath)
-    print(glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz')))
     print("Untarring CRTM Tarball {}".format (glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz'))[0]))
     t = tarfile.open( glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz'))[0]  )
     t.extractall( path = scriptDir )
@@ -158,6 +157,40 @@ def patchCrtm(fo, fe, scriptDir):
     p = Popen(['patch','-p0','-i',os.path.join(scriptDir,'gfortran.patch')],stderr=fe,stdout=fo)
     p.wait()
     runAndCheckProcess(p,"Patching CRTM for gcc compatibility", fo, fe, scriptDir)
+
+    p = Popen(['patch','-p0','-i',os.path.join(scriptDir,'layerAvg.patch')],stderr=fe,stdout=fo)
+    p.wait()
+    runAndCheckProcess(p,"Patching CRTM for gcc compatibility", fo, fe, scriptDir)
+
+    p = Popen(['patch','-p0','-i',os.path.join(scriptDir,'kmatrix.patch')],stderr=fe,stdout=fo)
+    p.wait()
+    runAndCheckProcess(p,"Patching CRTM for OpenMP k-matrix compatibility ", fo, fe, scriptDir)
+
+def configureCompileInstallCrtm( installLocation, fo, fe, scriptDir ):
+    # configure as one usually does
+    p = Popen(['./configure','--prefix='+installLocation,'--disable-big-endian'],stderr=fe,stdout=fo)
+    p.wait()
+    runAndCheckProcess(p,"CRTM configure", fo, fe, scriptDir)
+
+    p = Popen(['make','-j'+a.jproc],stderr=fe,stdout=fo,shell=True)
+    p.wait()
+    runAndCheckProcess(p, "Comipling CRTM", fo, fe, scriptDir)
+    
+    p = Popen(['make', 'check'],stderr=fe,stdout=fo, shell=True)
+    p.wait()
+    runAndCheckProcess(p,"CRTM check", fo, fe, scriptDir)
+    
+    p = Popen(['make','install'],stderr=fe,stdout=fo)
+    p.wait()        
+    runAndCheckProcess(p,"CRTM install", fo, fe, scriptDir)
+
+def moveCrtmCoefficients(installLocation):
+    cwd = os.getcwd()
+    p = os.path.join(cwd,'fix','SpcCoeff','Little_Endian')
+    for f in os.listdir(p):
+        shutil.copy(os.path.join(p,f), os.path.join(installLocation,'crtm','crtm_coef'))
+
+    p = os.path.join(cwd,'fix','TauCoeff','ODPS','Little_Endian')
 
     p = Popen(['patch','-p0','-i',os.path.join(scriptDir,'kmatrix.patch')],stderr=fe,stdout=fo)
     p.wait()
