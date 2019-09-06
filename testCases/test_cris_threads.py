@@ -51,7 +51,6 @@ def main(coefficientPath, sensor_id):
         profiles.windSpeed10m[i] = 5.0
         profiles.LAI[i] = h5['LAI'][()]
         profiles.windDirection10m[i] = h5['windDirection10m'][()]
-        profiles.n_absorbers[i] = h5['n_absorbers'][()]
         # land, soil, veg, water, snow, ice
         profiles.surfaceTypes[i,0] = h5['landType'][()]
         profiles.surfaceTypes[i,1] = h5['soilType'][()]

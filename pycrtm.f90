@@ -8,7 +8,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
                         traceConcLayers, trace_IDs, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
                         cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology, & 
-                        surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m, n_absorbers, & 
+                        surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m, & 
                         landType, soilType, vegType, waterType, snowType, iceType, nthreads, &  
                         outTb, outTransmission, & 
                         emissivityReflectivity )      
@@ -40,7 +40,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   real(kind=8), intent(in) :: cloudConcentration(N_profiles, N_LAYERS, N_clouds) 
   real(kind=8), intent(in) :: cloudFraction(N_Profiles, N_layers)
   integer, intent(in) :: aerosolType(N_Profiles, N_aerosols), cloudType(N_Profiles, N_clouds)
-  integer, intent(in) :: n_absorbers(N_Profiles), climatology(N_profiles)
+  integer, intent(in) :: climatology(N_profiles)
   real(kind=8), intent(in) :: surfaceTemperatures(N_Profiles,4), surfaceFractions(N_profiles, 4)
   real(kind=8), intent(in) :: LAI(N_Profiles), salinity(N_Profiles),  windSpeed10m(N_Profiles), windDirection10m(N_Profiles)
   integer, intent(in) ::  landType(N_Profiles), soilType(N_Profiles), vegType(N_Profiles), waterType(N_Profiles)
@@ -169,7 +169,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   !$omp& shared(traceConcLayers,trace_IDs)& 
   !$omp& shared(aerosolEffectiveRadius, aerosolConcentration, aerosolType, cloudsOn, aerosolsOn)& 
   !$omp& shared(cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology)& 
-  !$omp& shared(surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m, n_absorbers)& 
+  !$omp& shared(surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m)& 
   !$omp& shared(landType, soilType, vegType, waterType, snowType, iceType, year, month, day)&
   !$omp& num_threads(nthreads) 
   Profile_Loop: DO n = 1, N_Profiles
@@ -204,7 +204,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
 
 
 
-    CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_ABSORBERS(n), N_CLOUDS_crtm, N_AEROSOLS_crtm )
+    CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_trace, N_CLOUDS_crtm, N_AEROSOLS_crtm )
     IF ( ANY (.NOT. CRTM_Atmosphere_Associated(atm)) ) THEN
       message = 'Error allocating CRTM Forward Atmosphere structure'
       CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
@@ -227,7 +227,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     atm(1)%Pressure = pressureLayers(n,:)
     atm(1)%Temperature = temperatureLayers(n,:)
    
-    do i_abs = 1,n_absorbers(n) 
+    do i_abs = 1,N_trace 
       atm(1)%Absorber(:,i_abs)      = traceConcLayers(n,:,i_abs)
       atm(1)%Absorber_Id(i_abs)     = trace_IDs(i_abs)
       if( trace_IDs(i_abs) == H2O_ID ) then 
@@ -391,7 +391,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
                         traceConcLayers, trace_IDs, & 
                         aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
                         cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology, & 
-                        surfaceTemperatures, surfaceFractions, LAI, salinity, windSpeed10m, windDirection10m, n_absorbers, & 
+                        surfaceTemperatures, surfaceFractions, LAI, salinity, windSpeed10m, windDirection10m, & 
                         landType, soilType, vegType, waterType, snowType, iceType, &  
                         outTb, outTransmission, & 
                         temperatureJacobian, traceJacobian, emissivityReflectivity, nthreads )      
@@ -431,7 +431,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   real(kind=8), intent(in) :: cloudEffectiveRadius(N_profiles,N_layers, N_clouds) 
   real(kind=8), intent(in) :: cloudConcentration(N_profiles, N_layers, N_clouds), cloudFraction(N_profiles,N_layers)
   integer, intent(in) :: aerosolType(N_profiles, N_aerosols), cloudType(N_profiles, N_clouds)
-  integer, intent(in) :: n_absorbers(N_profiles), climatology(N_profiles)
+  integer, intent(in) ::  climatology(N_profiles)
   real(kind=8), intent(in) :: surfaceTemperatures(N_profiles,4), surfaceFractions(N_profiles,4), LAI(N_profiles) 
   real(kind=8), intent(in) :: salinity(N_profiles), windSpeed10m(N_profiles), windDirection10m(N_profiles)
   integer, intent(in) :: landType(N_profiles), soilType(N_profiles), vegType(N_profiles), waterType(N_profiles) 
@@ -546,7 +546,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! ----------------------------------------
     ! The input FORWARD structure
 
-!    CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_ABSORBERS(1), N_CLOUDS, N_AEROSOLS )
+!    CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_trace, N_CLOUDS, N_AEROSOLS )
 !    IF ( ANY(.NOT. CRTM_Atmosphere_Associated(atm)) ) THEN
 !      message = 'Error allocating CRTM Forward Atmosphere structure'
 !      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
@@ -559,7 +559,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   !$omp parallel do default(private) shared(emissivityReflectivity,outTb)&
   !$omp& shared(temperatureJacobian)& 
   !$omp& shared(traceJacobian,outTransmission)&
-  !$omp& shared(nChan, N_Layers,N_Absorbers,N_CLOUDS_crtm, N_AEROSOLS_crtm, N_trace)&
+  !$omp& shared(nChan, N_Layers,N_CLOUDS_crtm, N_AEROSOLS_crtm, N_trace)&
   !$omp& shared(pressureLevels, pressureLayers, temperatureLayers)& 
   !$omp& shared(traceConcLayers, trace_IDs, cloudsOn, aerosolsOn, zenithAngle,scanAngle,azimuthAngle,solarAngle)& 
   !$omp& shared(aerosolEffectiveRadius, aerosolConcentration, aerosolType)& 
@@ -631,7 +631,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     !           are allocated in this example
     ! ----------------------------------------
     ! The input FORWARD structure
-    CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_ABSORBERS(n), N_CLOUDS_crtm, N_AEROSOLS_crtm )
+    CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_trace, N_CLOUDS_crtm, N_AEROSOLS_crtm )
     IF ( ANY(.NOT. CRTM_Atmosphere_Associated(atm)) ) THEN
       message = 'Error allocating CRTM Forward Atmosphere structure'
       CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
@@ -639,7 +639,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     END IF
 
     ! The output K-MATRIX structure
-    CALL CRTM_Atmosphere_Create( atm_K, N_LAYERS, N_ABSORBERS(n), N_CLOUDS_crtm, N_AEROSOLS_crtm )
+    CALL CRTM_Atmosphere_Create( atm_K, N_LAYERS, N_trace, N_CLOUDS_crtm, N_AEROSOLS_crtm )
     IF ( ANY(.NOT. CRTM_Atmosphere_Associated(atm_K)) ) THEN
       message = 'Error allocating CRTM K-matrix Atmosphere structure'
       CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
@@ -672,7 +672,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     atm(1)%Level_Pressure = pressureLevels(n,:)
     atm(1)%Pressure = pressureLayers(n,:)
     atm(1)%Temperature = temperatureLayers(n,:)
-    do i_abs = 1,N_absorbers(n)
+    do i_abs = 1,N_trace
         atm(1)%Absorber(:,i_abs)      = traceConcLayers(n,:,i_abs)
         atm(1)%Absorber_Id(i_abs)     = trace_IDs(i_abs)
         if ( trace_IDs(i_abs) == H2O_ID ) then
@@ -792,7 +792,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     do l=1,nChan
         temperatureJacobian(n, l, 1:n_layers) = atm_k(l, 1)%Temperature(1:n_layers)
         !jacobians of H2O, O3, etc... will be determined by the order in which they were assigned in atm. 
-        do i_abs=1,N_absorbers(n)
+        do i_abs=1,N_trace
             traceJacobian(n,l, 1:n_layers,i_abs) = atm_k(l,1)%Absorber(1:n_layers,i_abs)
         enddo
         outTransmission(n, l, 1:n_layers) = rts(l, 1)%Layer_Optical_Depth
