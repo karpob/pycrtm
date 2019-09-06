@@ -124,6 +124,9 @@ class pyCRTM:
         self.N2OK = []
         self.CH4K = []
         self.COK = []
+        self.SkinK = []
+        self.SurfEmisK = []
+        self.SurfReflK = []
         self.Wavenumbers = []
         self.wavenumbers = []
         self.wavenumber = []
@@ -198,7 +201,7 @@ class pyCRTM:
     def runK(self):
         self.setupGases() 
              
-        self.Bt, layerOpticalDepths, self.TK, traceK,\
+        self.Bt, layerOpticalDepths, self.TK, traceK, self.SkinK, self.SurfEmisK, self.ReflK,\
         self.surfEmisRefl =  pycrtm.wrap_k_matrix(  self.coefficientPath, self.sensor_id,\
                         self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], self.nChan, \
                         self.profiles.Pi, self.profiles.P, self.profiles.T, \
