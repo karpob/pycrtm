@@ -1,0 +1,11 @@
+--- libsrc/ODPS_CoordinateMapping.f90	2017-11-27 13:56:47.000000000 -0500
++++ ODPS_CoordinateMapping.f90	2019-09-06 12:00:51.000000000 -0400
+@@ -43,7 +43,7 @@
+   PUBLIC :: Interpolate_Profile_F1_TL
+   PUBLIC :: Interpolate_Profile_F1_AD
+   PUBLIC :: Compute_Interp_Index
+-
++  PUBLIC :: LayerAvg
+   ! Parameters used in the geopotential height calculation routines
+   ! a factor used in the virtual temperature Tv calculation
+   REAL(fp), PARAMETER :: C = (ONE/EPS - ONE) / 1000.0_fp
