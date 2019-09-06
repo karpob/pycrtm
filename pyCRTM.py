@@ -154,6 +154,10 @@ class pyCRTM:
         else:
             print("Warning! {} doesn't exist!".format( os.path.join(self.coefficientPath, self.sensor_id+'.SpcCoeff.bin') ) )        
     def setupGases(self):
+
+        #If this has been run by previous call to runK or runDirect, don't run it again!
+        if(len(self.traceIds)>0): return
+
         max_abs = int(max(self.profiles.n_absorbers))
         nprof, nlay = self.profiles.T.shape 
         self.traceConc = np.zeros([nprof,nlay,max_abs])

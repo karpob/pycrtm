@@ -13,7 +13,7 @@ def main(coefficientPath, sensor_id):
     cases = os.listdir( os.path.join(thisDir,'data') )
     cases.sort()
     # create 4 profiles for each of the 4 cases
-    profiles = profilesCreate( 4, 92 )
+    profiles = profilesCreate( 4, 92)
     storedTb = []
     storedEmis = []
     # populate the cases, and previously calculated Tb from crtm test program.    
@@ -32,7 +32,6 @@ def main(coefficientPath, sensor_id):
         profiles.T[i,:] = np.asarray(h5['temperatureLayers'])
         profiles.Q[i,:] = np.asarray(h5['humidityLayers'])
         profiles.O3[i,:] = np.asarray(h5['ozoneConcLayers'])
-        profiles.CO2[i,:] = np.asarray(h5['co2ConcLayers'])
         profiles.clouds[i,:,0,0] = np.asarray(h5['cloudConcentration'])
         profiles.clouds[i,:,0,1] = np.asarray(h5['cloudEffectiveRadius'])
         profiles.aerosols[i,:,0,0] = np.asarray(h5['aerosolConcentration'])
@@ -69,11 +68,11 @@ def main(coefficientPath, sensor_id):
 
     crtmOb.runDirect()
     forwardTb = crtmOb.Bt
-    forwardEmissivity = crtmOb.surfEmisRefl
+    forwardEmissivity = crtmOb.surfEmisRefl[0,:]
 
     crtmOb.runK()
     kTb = crtmOb.Bt
-    kEmissivity = crtmOb.surfEmisRefl
+    kEmissivity = crtmOb.surfEmisRefl[0,:]
 
     if ( all( np.abs( forwardTb.flatten() - np.asarray(storedTb).flatten() ) <= 1e-5)  and all( np.abs( kTb.flatten() - np.asarray(storedTb).flatten() ) <= 1e-5) ):
         print("Yay! all values are close enough to what CRTM test program produced!")
