@@ -1,4 +1,8 @@
 module pycrtm 
+private
+public :: wrap_forward 
+public :: wrap_k_matrix 
+public :: applyAvg
 contains
 subroutine wrap_forward( coefficientPath, sensor_id_in, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, &
@@ -103,41 +107,19 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   !
   ! 4a. Initialise all the sensors at once
   ! --------------------------------------
-  ! Karpowicz addition... if we have less than 0 for aerosol/cloud, don't turn on aerosols/clouds.
-  if( all(aerosolType < 0) ) then
-    N_AEROSOLS_crtm = 0
-    aerosolsOn = .False.
-  else
-    N_AEROSOLS_crtm = N_aerosols
-    aerosolsOn = .True. 
-  endif
+  ! Figure out what needs allocating for Clouds and Aerosols. Are they on?
 
-  if( all(cloudType < 0) ) then
-    N_CLOUDS_crtm = 0
-    cloudsOn = .False.
-  else
-    N_CLOUDS_crtm = N_clouds
-    cloudsOn = .True. 
-  endif
-  ! End Karpowicz change to CRTM-style interface.
-
-   err_stat = CRTM_Init( sensor_id,  chinfo, &
+  call aerosols_and_clouds_on(aerosolType, cloudType, N_clouds, N_aerosols, & 
+                              N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
+  
+  err_stat = CRTM_Init( sensor_id,  chinfo, &
                         File_Path=coefficientPath, &
                         Load_CloudCoeff = cloudsOn, &  
                         Load_AerosolCoeff = aerosolsOn, &
                         Quiet=.True. )
-
-  IF ( err_stat /= SUCCESS ) THEN
-    message = 'Error initializing CRTM'
-    CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-    STOP
-  END IF
-
+  call check_allocate_status(err_stat,'Error Initializing CRTM')
 
   WRITE( *,'(/5x,"Initializing the CRTM...")' )
-
-  ! if aerosols or cloud concentrations specified as < -9999, don't load cloud/aerosol coefficients.
-
 
   ! 4b. Output some channel information
   ! -----------------------------------
@@ -145,20 +127,18 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   WRITE( *,'(/5x,"Processing a total of ",i0," channels...")' ) n_channels
 
 
-
-
   ! ============================================================================
 
-    ! ==========================================================================
-    ! STEP 5. **** ALLOCATE STRUCTURE ARRAYS ****
-    !
-    ! 5a. Determine the number of channels
-    !     for the current sensor
-    ! ------------------------------------
-    n_channels = CRTM_ChannelInfo_n_Channels(chinfo(1))
-    
-    ! 5b. Allocate the ARRAYS
-    ! -----------------------
+  ! ==========================================================================
+  ! STEP 5. **** ALLOCATE STRUCTURE ARRAYS ****
+  !
+  ! 5a. Determine the number of channels
+  !     for the current sensor
+  ! ------------------------------------
+  n_channels = CRTM_ChannelInfo_n_Channels(chinfo(1))
+  
+  ! 5b. Allocate the ARRAYS
+  ! -----------------------
   ! Begin loop over profile
   ! ----------------------
   !$ call omp_set_num_threads(nthreads)
@@ -180,37 +160,17 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     !           are allocated in this example
     ! ----------------------------------------
     ! The input FORWARD structure
-     ALLOCATE( rts( n_channels, 1), STAT = alloc_stat )
-
-    IF ( alloc_stat /= 0 ) THEN
-      message = 'Error allocating structure arrays'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
-    ALLOCATE( atm( 1), STAT = alloc_stat )
-
-    IF ( alloc_stat /= 0 ) THEN
-      message = 'Error allocating atm arrays'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
-  ALLOCATE( sfc(1), STAT = alloc_stat )
-
-    IF ( alloc_stat /= 0 ) THEN
-      message = 'Error allocating sfc arrays'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
-
-
+    ALLOCATE( rts( n_channels, 1), STAT = alloc_stat )
+    call check_allocate_status(alloc_stat, "Error allocating Solution rts(n_channels,1).")
+    ! allocate 1 profile
+    ALLOCATE( atm(1), STAT = alloc_stat )
+    call check_allocate_status(alloc_stat, "Error allocating atm.")
+    ! allocate 1 surface
+    ALLOCATE( sfc(1), STAT = alloc_stat )
+    call check_allocate_status(alloc_stat, "Error allocating sfc.")
 
     CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_trace, N_CLOUDS_crtm, N_AEROSOLS_crtm )
-    IF ( ANY (.NOT. CRTM_Atmosphere_Associated(atm)) ) THEN
-      message = 'Error allocating CRTM Forward Atmosphere structure'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      !STOP
-    END IF
-  
+    call check_logical_status(ANY(.not. CRTM_Atmosphere_Associated(atm) ), "Failed in CRTM_Atmopsphere_Create")
 
     ! ==========================================================================
     ! STEP 6. **** ASSIGN INPUT DATA ****
@@ -222,39 +182,11 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     !     instructions in this program relatively "clean".
     ! ------------------------------------------------------------------------
     ! ...Profile data
-    atm(1)%Climatology = climatology(n)
-    atm(1)%Level_Pressure = pressureLevels(n,:)
-    atm(1)%Pressure = pressureLayers(n,:)
-    atm(1)%Temperature = temperatureLayers(n,:)
-   
-    do i_abs = 1,N_trace 
-      atm(1)%Absorber(:,i_abs)      = traceConcLayers(n,:,i_abs)
-      atm(1)%Absorber_Id(i_abs)     = trace_IDs(i_abs)
-      if( trace_IDs(i_abs) == H2O_ID ) then 
-        atm(1)%absorber_units(i_abs) = MASS_MIXING_RATIO_UNITS
-      else 
-        atm(1)%absorber_units(i_abs)  = VOLUME_MIXING_RATIO_UNITS
-      endif
-    enddo
-
-    if( aerosolsOn )  then
-      do species = 1, N_aerosols_crtm
-        atm(1)%Aerosol(species)%Type                = aerosolType(n, species)
-        atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius(n,:, species)
-        atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(n,:, species)
-      enddo
-    endif
-    if( cloudsOn ) then
-      do species = 1, N_clouds_crtm
-        atm(1)%Cloud(species)%Type                = cloudType(n, species)
-        atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(n,:, species)
-        atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(n,:, species)
-      enddo
-      atm(1)%Cloud_Fraction(:)            = cloudFraction(n,:)
-    endif
-
-
-
+    call set_profile(atm, climatology(n), pressureLevels(n,:), pressureLayers(n,:), temperatureLayers(n,:),&
+                         traceConcLayers(n,:,:), trace_IDs(:), &
+                         aerosolType(n,:), aerosolEffectiveRadius(n,:,:), aerosolConcentration(n,:,:), & 
+                         cloudType(n,:), cloudEffectiveRadius(n,:,:), cloudConcentration(n,:,:), & 
+                         cloudFraction(n,:), N_trace, N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
 
     ! 6b. Geometry input
     ! ------------------
@@ -271,47 +203,21 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! ==========================================================================
     ! 4a.1 Profile #1
     ! ---------------
-    ! ...Land surface characteristics
-    sfc%Land_Coverage     = surfaceFractions(n,1)
-    sfc%Land_Type         = landType(n) !TUNDRA_SURFACE_TYPE
-    sfc%Land_Temperature  = surfaceTemperatures(n,1)
-    sfc%Lai               = LAI(n)
-    sfc%Soil_Type         = soilType(n) !COARSE_SOIL_TYPE
-    sfc%Vegetation_Type   = vegType(n) !GROUNDCOVER_VEGETATION_TYPE
-    ! ...Water surface characteristics
-    sfc%Water_Coverage    = surfaceFractions(n,2)
-    sfc%Water_Type        = waterType(n) !SEA_WATER_TYPE
-    sfc%Water_Temperature = surfaceTemperatures(n,2)
-
-    ! ...Snow coverage characteristics
-    sfc%Snow_Coverage    = surfaceFractions(n,3)
-    sfc%Snow_Type        = snowType(n) !FRESH_SNOW_TYPE
-    sfc%Snow_Temperature = surfaceTemperatures(n,3)
-    ! ...Ice surface characteristics
-    sfc%Ice_Coverage    = surfaceFractions(n,4)
-    sfc%Ice_Type        = iceType(n) !FRESH_ICE_TYPE
-    sfc%Ice_Temperature = surfaceTemperatures(n,4)
-
-    sfc%Wind_Speed = windSpeed10m(n)
-    sfc%Wind_Direction = windDirection10m(n)
-    sfc%Salinity = salinity(n)
-   
+    ! set the surface properties for the profile.
+    call set_surface(sfc, surfaceFractions(n,:), landType(n), surfaceTemperatures(n,:), LAI(n), & 
+                           soilType(n), vegType(n), waterType(n), snowType(n), iceType(n), &
+                           windSpeed10m(n), windDirection10m(n), salinity(n))
     ! ==========================================================================
     ! STEP 8. **** CALL THE CRTM FUNCTIONS FOR THE CURRENT SENSOR ****
     !
-    !WRITE( *, '( /5x, "Calling the CRTM functions for ",a,"..." )' ) TRIM(sensor_id(1))
-    
     ! 8a. The forward model
     ! ---------------------
 
     ! Need this to get transmission out of solution, otherwise won't be allocated !!!
     call crtm_rtsolution_create( rts, n_layers )
-    if ( any(.not. crtm_rtsolution_associated( rts )) ) then
-        call display_message( subroutine_name, 'error allocating rts', err_stat)
-        !return
-    end if
+    call check_logical_status( any(.not. crtm_rtsolution_associated( rts ) ),'rts failed to create.') 
 
-    ! why did I put this here????
+    ! Need options if you want to pass in emissivity.
     !call crtm_options_create( options, nChan )
     !if ( any(.not. crtm_options_associated( options )) ) then 
     !    call display_message( subroutine_name, 'error allocating options', FAILURE)  
@@ -321,22 +227,15 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     !options%Use_Emissivity = .false.
     !options%Use_Direct_Reflectivity = .false.
 
-    !! Karpowicz addition to CRTM-style interface, switch to force scattering off when aerosols and clouds turned off.
-    !if (.not. cloudsOn .and. .not. aerosolsOn) then 
-    !    options%Include_Scattering = .false.
-    !end if 
-
     err_stat = CRTM_Forward( atm        , &  ! Input
                              sfc        , &  ! Input
                              geo        , &  ! Input
                              chinfo, &  ! Input
                              rts ) !,    & ! Output
     !                        options = options ) 
-    IF ( err_stat /= SUCCESS ) THEN
-      message = 'Error calling CRTM Forward Model for '//TRIM(sensor_id(1))
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
+
+    call check_allocate_status(err_stat, "Error Calling CRTM_Forward.")
+
     ! ============================================================================
     ! 8c. **** OUTPUT THE RESULTS TO SCREEN **** (Or transfer it into a series of arrays out of this thing!)
     !
@@ -363,24 +262,23 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
     ! ==========================================================================
     CALL CRTM_Atmosphere_Destroy(atm)
     call crtm_rtsolution_destroy(rts)
-    deallocate(atm,sfc)
+    deallocate(atm,stat=alloc_stat)
+    call check_allocate_status(alloc_stat,"Atm failed to deallocate.")
+    deallocate(sfc, stat=alloc_stat)
+    call check_allocate_status(alloc_stat,"Sfc failed to deallocate.")
     DEALLOCATE(rts, STAT = alloc_stat)
+    call check_allocate_status(alloc_stat,"Rts failed to deallocate.")
   END DO Profile_Loop
   !$omp end parallel do
-
-  
   
   ! ==========================================================================
   ! 10. **** DESTROY THE CRTM ****
   !
   WRITE( *, '( /5x, "Destroying the CRTM..." )' )
   err_stat = CRTM_Destroy( chinfo )
-  IF ( err_stat /= SUCCESS ) THEN
-    message = 'Error destroying CRTM'
-    CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-    STOP
-  END IF
-  ! ==========================================================================
+  call check_allocate_status(err_stat, 'Error Destroying the CRTM')
+  write(*,*)'wrap_forward done!'
+
 end subroutine wrap_forward
 
 subroutine wrap_k_matrix( coefficientPath, sensor_id_in, & 
@@ -414,7 +312,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   CHARACTER(*), PARAMETER :: PROGRAM_VERSION_ID = '0.01'
 
   ! variables for interface
-  character(len=1024), intent(in) :: coefficientPath
+  character(len=*), intent(in) :: coefficientPath
   character(len=*), intent(in) :: sensor_id_in
   integer, intent(in) :: nChan, N_profiles, N_Layers, N_aerosols, N_clouds, N_trace 
   ! The scan angle is based
@@ -501,61 +399,28 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   !
   ! 4a. Initialise all the sensors at once
   ! --------------------------------------
-  if( all(aerosolType < 0) ) then
-    N_AEROSOLS_crtm = 0
-    aerosolsOn = .False.
-  else
-    N_AEROSOLS_crtm = N_aerosols
-    aerosolsOn = .True. 
-  endif
+  ! figure out how to allocate aerosols/clouds and are the even turned on by the user?
 
-  if( all(cloudType < 0) ) then
-    N_CLOUDS_crtm = 0
-    cloudsOn = .False.
-  else
-    N_CLOUDS_crtm = N_clouds
-    cloudsOn = .True. 
-  endif
+  call aerosols_and_clouds_on(aerosolType, cloudType, N_clouds, N_aerosols, & 
+                              N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
 
   WRITE( *,'(/5x,"Initializing the CRTM...")' )
- 
- ! if aerosols or cloud concentrations specified as < -9999, don't load cloud/aerosol coefficients.
 
   err_stat = CRTM_Init( sensor_id,  chinfo, &
                         File_Path=coefficientPath, &
                         Load_CloudCoeff = cloudsOn, &  
                         Load_AerosolCoeff = aerosolsOn, &  
                         Quiet=.True. )
-
-
-  IF ( err_stat /= SUCCESS ) THEN
-    message = 'Error initializing CRTM'
-    CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-    STOP
-  END IF
+  call check_allocate_status(err_stat, 'Error initializing CRTM')
 
   ! 4b. Output some channel information
   ! -----------------------------------
   n_channels = CRTM_ChannelInfo_n_Channels(chinfo(1))
   WRITE( *,'(/5x,"Processing a total of ",i0," channels...")' ) n_channels
   WRITE( *,'(7x,i0," from ",a)' )  CRTM_ChannelInfo_n_Channels(chinfo(1)), TRIM(sensor_id(1))
-  ! ============================================================================
 
-    ! 5c. Allocate the STRUCTURE INTERNALS
-    !     NOTE: Only the Atmosphere structures
-    !           are allocated in this example
-    ! ----------------------------------------
-    ! The input FORWARD structure
-
-!    CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_trace, N_CLOUDS, N_AEROSOLS )
-!    IF ( ANY(.NOT. CRTM_Atmosphere_Associated(atm)) ) THEN
-!      message = 'Error allocating CRTM Forward Atmosphere structure'
-!      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-!      STOP
-!    END IF
   ! Begin loop over sensors
   ! ----------------------
-  ! openmp won't work for K-matrix. Should be a fix in future release of CRTM. 
   !$ call omp_set_num_threads(nthreads)
   !$omp parallel do default(private) shared(emissivityReflectivity,outTb)&
   !$omp& shared(temperatureJacobian)& 
@@ -572,9 +437,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
  
   !$omp& num_threads(nthreads) 
   Profile_Loop: DO n = 1, N_profiles
-
-
-
   
     ! ==========================================================================
     ! STEP 5. **** ALLOCATE STRUCTURE ARRAYS ****
@@ -587,46 +449,23 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     
     ! 5b. Allocate the ARRAYS
     ! -----------------------
-    allocate(atm(1), sfc(1), STAT = alloc_stat)
-    IF (alloc_stat /= 0 ) THEN
-      message = 'Error allocating atm, sfc'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    else 
-    END IF
+    allocate(atm(1), STAT = alloc_stat)
+    call check_allocate_status(alloc_stat,'Error allocating atm(1)')
 
+    allocate(sfc(1), STAT = alloc_stat)
+    call check_allocate_status(alloc_stat,'Error allocating sfc(1)')
 
     ALLOCATE( rts( n_channels, 1 ), STAT = alloc_stat )
-    IF (alloc_stat /= 0 ) THEN
-      message = 'Error allocating rts'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    else 
-    END IF
-
+    call check_allocate_status(alloc_stat,'Error allocating rts(n_channels,1)')
 
     ALLOCATE( atm_K( n_channels, 1 ), STAT = alloc_stat )
-    IF (alloc_stat /= 0 ) THEN
-      message = 'Error allocating atm_K'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
-
-
+    call check_allocate_status(alloc_stat,'Error allocating atm_k')
 
     ALLOCATE( sfc_K( n_channels, 1 ), STAT = alloc_stat )
-    IF (alloc_stat /= 0 ) THEN
-      message = 'Error allocating sfc_K'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
+    call check_allocate_status(alloc_stat,'Error allocating sfc_k')
 
     ALLOCATE( rts_K( n_channels, 1 ), STAT = alloc_stat )
-    IF (alloc_stat /= 0 ) THEN
-      message = 'Error allocating rts_K'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
+    call check_allocate_status(alloc_stat,'Error allocating rts_k')
 
     ! 5c. Allocate the STRUCTURE INTERNALS
     !     NOTE: Only the Atmosphere structures
@@ -634,31 +473,17 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! ----------------------------------------
     ! The input FORWARD structure
     CALL CRTM_Atmosphere_Create( atm, N_LAYERS, N_trace, N_CLOUDS_crtm, N_AEROSOLS_crtm )
-    IF ( ANY(.NOT. CRTM_Atmosphere_Associated(atm)) ) THEN
-      message = 'Error allocating CRTM Forward Atmosphere structure'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
+    call check_logical_status(ANY(.NOT. CRTM_Atmosphere_Associated(atm)), 'Error in CRTM_Atmosphere_Create Atm()')
 
     ! The output K-MATRIX structure
     CALL CRTM_Atmosphere_Create( atm_K, N_LAYERS, N_trace, N_CLOUDS_crtm, N_AEROSOLS_crtm )
-    IF ( ANY(.NOT. CRTM_Atmosphere_Associated(atm_K)) ) THEN
-      message = 'Error allocating CRTM K-matrix Atmosphere structure'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
+    call check_logical_status(ANY(.NOT. CRTM_Atmosphere_Associated(atm_K)),  'Error in CRTM_Atmosphere_Create Atm_k()')
 
     call crtm_rtsolution_create( rts, n_layers )
-    if ( any(.not. crtm_rtsolution_associated( rts )) ) then
-        call display_message( subroutine_name, 'error allocating rts', err_stat)
-        !return
-    end if
+    call check_logical_status(any(.not. crtm_rtsolution_associated( rts )),  'Error in crtm_rtsolution_create rts()')
     
     call crtm_rtsolution_create( rts_k, n_layers )
-    if ( any(.not. crtm_rtsolution_associated( rts_k )) ) then
-        call display_message( subroutine_name, 'error allocating rts_k', err_stat)
-        !return
-    end if
+    call check_logical_status(any(.not. crtm_rtsolution_associated( rts_k )),  'Error in crtm_rtsolution_create rts_k()')
 
     ! ==========================================================================
     ! STEP 6. **** ASSIGN INPUT DATA ****
@@ -670,36 +495,12 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     !     instructions in this program relatively "clean".
     ! ------------------------------------------------------------------------
     ! ...Profile data
-    atm(1)%Climatology         = climatology(n)  
-    atm(1)%Level_Pressure = pressureLevels(n,:)
-    atm(1)%Pressure = pressureLayers(n,:)
-    atm(1)%Temperature = temperatureLayers(n,:)
-    do i_abs = 1,N_trace
-        atm(1)%Absorber(:,i_abs)      = traceConcLayers(n,:,i_abs)
-        atm(1)%Absorber_Id(i_abs)     = trace_IDs(i_abs)
-        if ( trace_IDs(i_abs) == H2O_ID ) then
-            atm(1)%absorber_units(i_abs)  = MASS_MIXING_RATIO_UNITS
-        else 
-            atm(1)%absorber_units(i_abs)  = VOLUME_MIXING_RATIO_UNITS
-        endif
-    enddo
-
-    if( aerosolsOn )  then
-        do species = 1,N_aerosols_crtm
-            atm(1)%Aerosol(species)%Type                = aerosolType(n,species)
-            atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius( n, :, species)
-            atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(n, :, species)
-        enddo
-    endif
-    if( cloudsOn ) then
-        do species = 1,N_clouds_crtm
-            atm(1)%Cloud(species)%Type                = cloudType(n, species)
-            atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(n,:, species)
-            atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(n,:, species)
-        enddo
-        atm(1)%Cloud_Fraction(:)            = cloudFraction(n, :)
-    
-    endif
+    call set_profile(atm, climatology(n), pressureLevels(n,:), pressureLayers(n,:), temperatureLayers(n,:),&
+                         traceConcLayers(n,:,:), trace_IDs(:), &
+                         aerosolType(n,:), aerosolEffectiveRadius(n,:,:), aerosolConcentration(n,:,:), & 
+                         cloudType(n,:), cloudEffectiveRadius(n,:,:), cloudConcentration(n,:,:), & 
+                         cloudFraction(n,:), N_trace, N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
+ 
 
     ! 6b. Geometry input
     ! ------------------
@@ -714,9 +515,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
                                  Source_Zenith_Angle  = solarAngle(n,1),  & 
                                  Source_Azimuth_Angle = solarAngle(n,2) )
     ! ==========================================================================
-
-
-
 
     ! ==========================================================================
     ! STEP 7. **** INITIALIZE THE K-MATRIX ARGUMENTS ****
@@ -737,29 +535,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     ! 4a.1 Profile #1
     ! ---------------
     ! ...Land surface characteristics
-    sfc%Land_Coverage     = surfaceFractions(n,1)
-    sfc%Land_Type         = landType(n) !TUNDRA_SURFACE_TYPE
-    sfc%Land_Temperature  = surfaceTemperatures(n,1)
-    sfc%Lai               = LAI(n)
-    sfc%Soil_Type         = soilType(n) !COARSE_SOIL_TYPE
-    sfc%Vegetation_Type   = vegType(n) !GROUNDCOVER_VEGETATION_TYPE
-    ! ...Water surface characteristics
-    sfc%Water_Coverage    = surfaceFractions(n,2)
-    sfc%Water_Type        = waterType(n) !SEA_WATER_TYPE
-    sfc%Water_Temperature = surfaceTemperatures(n,2)
-
-    ! ...Snow coverage characteristics
-    sfc%Snow_Coverage    = surfaceFractions(n,3)
-    sfc%Snow_Type        = snowType(n) !FRESH_SNOW_TYPE
-    sfc%Snow_Temperature = surfaceTemperatures(n,3)
-    ! ...Ice surface characteristics
-    sfc%Ice_Coverage    = surfaceFractions(n,4)
-    sfc%Ice_Type        = iceType(n) !FRESH_ICE_TYPE
-    sfc%Ice_Temperature = surfaceTemperatures(n,4)
-    
-    sfc%Wind_Speed = windSpeed10m(n)
-    sfc%Wind_Direction = windDirection10m(n)
-    sfc%Salinity = salinity(n)
+     call set_surface(sfc, surfaceFractions(n,:), landType(n), surfaceTemperatures(n,:), LAI(n), & 
+                           soilType(n), vegType(n), waterType(n), snowType(n), iceType(n), &
+                           windSpeed10m(n), windDirection10m(n), salinity(n))
     ! ==========================================================================
     ! STEP 8. **** CALL THE CRTM FUNCTIONS FOR THE CURRENT SENSOR ****
     !
@@ -774,12 +552,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
                               atm_K      , &  ! K-MATRIX Output
                               sfc_K      , &  ! K-MATRIX Output
                               rts          )  ! FORWARD  Output
-    
-    IF ( err_stat /= SUCCESS ) THEN
-      message = 'Error calling CRTM K-Matrix Model'
-      CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-      STOP
-    END IF
+    call check_allocate_status(err_stat,'Error calling the CRTM K-Matrix Model')    
 
     ! ==========================================================================
     ! STEP 9. **** CLEAN UP FOR NEXT SENSOR ****
@@ -809,31 +582,25 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
     emissivityReflectivity(1,n,:) = rts(:,1)%Surface_Emissivity
     emissivityReflectivity(2,n,:) = rts(:,1)%Surface_Reflectivity
     CALL CRTM_Atmosphere_Destroy(atm)
-      if(alloc_stat /= SUCCESS) then
-        print*, 'atm destroy failed'
-        STOP
-    endif
     CALL CRTM_Atmosphere_Destroy(atm_k)
+
     DEALLOCATE(atm_k, STAT = alloc_stat)
-    if(alloc_stat /= SUCCESS) then
-        print*, 'atm_k destroy failed'
-        STOP
-    endif
-  DEALLOCATE(rts_K, sfc_k, STAT = alloc_stat)
-   if(alloc_stat /= SUCCESS) then
-        print*, 'rts_k dealloc failed'
-        STOP
-    endif
-   DEALLOCATE(rts, STAT = alloc_stat)
-   if(alloc_stat /= SUCCESS) then
-        print*, 'rts dealloc failed'
-        STOP
-    endif
-   DEALLOCATE(atm, sfc, STAT = alloc_stat)
-    if(alloc_stat /= SUCCESS) then
-        print*, 'dealloc atm,sfc failed'
-        STOP
-    endif
+    call check_allocate_status(alloc_stat, 'Atm_k deallocate failed')
+
+    DEALLOCATE(rts_K, STAT = alloc_stat)
+    call check_allocate_status(alloc_stat, 'rts_k deallocate failed')
+
+    DEALLOCATE(sfc_k, STAT = alloc_stat)
+    call check_allocate_status(alloc_stat, 'sfc_k deallocate failed')
+
+    DEALLOCATE(rts, STAT = alloc_stat)
+    call check_allocate_status(alloc_stat, 'rts deallocate failed')
+
+    DEALLOCATE(atm, STAT = alloc_stat)
+    call check_allocate_status(alloc_stat, 'atm deallocate failed')
+
+    DEALLOCATE(sfc, STAT = alloc_stat)
+    call check_allocate_status(alloc_stat, 'sfc deallocate failed')
     ! ==========================================================================
 
   END DO Profile_Loop
@@ -843,11 +610,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   !
   WRITE( *, '( /5x, "Destroying the CRTM..." )' )
   err_stat = CRTM_Destroy( chinfo )
-  IF ( err_stat /= SUCCESS ) THEN
-    message = 'Error destroying CRTM'
-    CALL Display_Message( SUBROUTINE_NAME, message, FAILURE )
-    STOP
-  END IF
+  call check_allocate_status(err_stat, 'Error destroying the CRTM.')
   ! ==========================================================================
 end subroutine wrap_k_matrix
 
@@ -875,4 +638,128 @@ end subroutine wrap_k_matrix
     END DO
   end subroutine applyAvg
 
+  subroutine aerosols_and_clouds_on(aerosolType, cloudType, N_clouds, N_aerosols, & 
+                                   N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
+
+  integer, intent(in) :: aerosolType(:,:), cloudType(:,:)
+  integer, intent(in) :: N_clouds, N_aerosols
+  integer, intent(out) :: N_AEROSOLS_crtm, N_CLOUDS_crtm
+  logical, intent(out) :: aerosolsOn, cloudsOn
+
+  if( all(aerosolType < 0) ) then
+    N_AEROSOLS_crtm = 0
+    aerosolsOn = .False.
+  else
+    N_AEROSOLS_crtm = N_aerosols
+    aerosolsOn = .True. 
+  endif
+
+  if( all(cloudType < 0) ) then
+    N_CLOUDS_crtm = 0
+    cloudsOn = .False.
+  else
+    N_CLOUDS_crtm = N_clouds
+    cloudsOn = .True. 
+  endif
+ 
+  end subroutine aerosols_and_clouds_on
+
+  subroutine check_allocate_status(alloc_stat,message)
+    integer :: alloc_stat
+    character(len=*) :: message
+    IF ( alloc_stat /= 0 ) THEN
+      write(*,*) message
+      STOP
+    END IF
+  end subroutine check_allocate_status
+
+  subroutine check_logical_status(stat,message)
+    logical :: stat
+    character(len=*) :: message
+    IF ( stat ) THEN
+      write(*,*) message
+      STOP
+    END IF
+  end subroutine check_logical_status
+
+  subroutine set_profile(atm, climatology, pressureLevels, pressureLayers, temperatureLayers,&
+                         traceConcLayers, trace_IDs, aerosolType, aerosolEffectiveRadius, aerosolConcentration, & 
+                         cloudType, cloudEffectiveRadius, cloudConcentration, cloudFraction, & 
+                         N_trace, N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
+  USE CRTM_module
+  TYPE(CRTM_Atmosphere_type), intent(inout) :: atm(:)
+  integer :: climatology
+  real(kind=8) :: pressureLevels(:), pressureLayers(:), temperatureLayers(:), traceConcLayers(:,:)
+  integer :: trace_IDs(:), aerosolType(:)
+  real(kind=8) :: aerosolEffectiveRadius(:,:),aerosolConcentration(:,:)
+  integer :: cloudType(:)
+  real(kind=8) :: cloudEffectiveRadius(:,:), cloudConcentration(:,:), cloudFraction(:)
+  integer :: N_trace, N_aerosols_crtm, N_clouds_crtm
+  logical :: aerosolsOn, cloudsOn
+  integer :: i_abs,species  
+ 
+    atm(1)%Climatology = climatology
+    atm(1)%Level_Pressure = pressureLevels(:)
+    atm(1)%Pressure = pressureLayers(:)
+    atm(1)%Temperature = temperatureLayers(:)
+   
+    do i_abs = 1,N_trace 
+      atm(1)%Absorber(:,i_abs)      = traceConcLayers(:,i_abs)
+      atm(1)%Absorber_Id(i_abs)     = trace_IDs(i_abs)
+      if( trace_IDs(i_abs) == H2O_ID ) then 
+        atm(1)%absorber_units(i_abs) = MASS_MIXING_RATIO_UNITS
+      else 
+        atm(1)%absorber_units(i_abs)  = VOLUME_MIXING_RATIO_UNITS
+      endif
+    enddo
+
+    if( aerosolsOn )  then
+      do species = 1, N_aerosols_crtm
+        atm(1)%Aerosol(species)%Type                = aerosolType( species)
+        atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius(:, species)
+        atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(:, species)
+      enddo
+    endif
+    if( cloudsOn ) then
+      do species = 1, N_clouds_crtm
+        atm(1)%Cloud(species)%Type                = cloudType(species)
+        atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(:, species)
+        atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(:, species)
+      enddo
+      atm(1)%Cloud_Fraction(:)            = cloudFraction(:)
+    endif
+
+  end subroutine set_profile
+  subroutine set_surface(sfc, surfaceFractions, landType, surfaceTemperatures, LAI, soilType, & 
+                         vegType, waterType, snowType, iceType, windSpeed10m, windDirection10m, & 
+                         salinity)
+    USE CRTM_module  
+    TYPE(CRTM_Surface_type) :: sfc(:)
+    real(kind=8) :: surfaceFractions(:), surfaceTemperatures(:), LAI, windSpeed10m, windDirection10m, salinity
+    integer :: landType, soilType, vegType, waterType, snowType, iceType
+
+    sfc%Land_Coverage     = surfaceFractions(1)
+    sfc%Land_Type         = landType 
+    sfc%Land_Temperature  = surfaceTemperatures(1)
+    sfc%Lai               = LAI
+    sfc%Soil_Type         = soilType 
+    sfc%Vegetation_Type   = vegType 
+    ! ...Water surface characteristics
+    sfc%Water_Coverage    = surfaceFractions(2)
+    sfc%Water_Type        = waterType 
+    sfc%Water_Temperature = surfaceTemperatures(2)
+
+    ! ...Snow coverage characteristics
+    sfc%Snow_Coverage    = surfaceFractions(3)
+    sfc%Snow_Type        = snowType 
+    sfc%Snow_Temperature = surfaceTemperatures(3)
+    ! ...Ice surface characteristics
+    sfc%Ice_Coverage    = surfaceFractions(4)
+    sfc%Ice_Type        = iceType 
+    sfc%Ice_Temperature = surfaceTemperatures(4)
+
+    sfc%Wind_Speed = windSpeed10m
+    sfc%Wind_Direction = windDirection10m
+    sfc%Salinity = salinity
+  end subroutine set_surface
 end module pycrtm
