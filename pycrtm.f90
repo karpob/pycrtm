@@ -1,4 +1,8 @@
 module pycrtm 
+private
+public :: wrap_forward 
+public :: wrap_k_matrix 
+public :: applyAvg
 contains
 subroutine wrap_forward( coefficientPath, sensor_id_in, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, &
