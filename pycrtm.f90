@@ -104,21 +104,9 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   ! 4a. Initialise all the sensors at once
   ! --------------------------------------
   ! Figure out what needs allocating for Clouds and Aerosols. Are they on?
-  if( all(aerosolType < 0) ) then
-    N_AEROSOLS_crtm = 0
-    aerosolsOn = .False.
-  else
-    N_AEROSOLS_crtm = N_aerosols
-    aerosolsOn = .True. 
-  endif
 
-  if( all(cloudType < 0) ) then
-    N_CLOUDS_crtm = 0
-    cloudsOn = .False.
-  else
-    N_CLOUDS_crtm = N_clouds
-    cloudsOn = .True. 
-  endif
+  call aerosols_and_clouds_on(aerosolType, cloudType, N_clouds, N_aerosols, & 
+                              N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
   
   err_stat = CRTM_Init( sensor_id,  chinfo, &
                         File_Path=coefficientPath, &
@@ -320,7 +308,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   CHARACTER(*), PARAMETER :: PROGRAM_VERSION_ID = '0.01'
 
   ! variables for interface
-  character(len=1024), intent(in) :: coefficientPath
+  character(len=*), intent(in) :: coefficientPath
   character(len=*), intent(in) :: sensor_id_in
   integer, intent(in) :: nChan, N_profiles, N_Layers, N_aerosols, N_clouds, N_trace 
   ! The scan angle is based
@@ -408,21 +396,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   ! 4a. Initialise all the sensors at once
   ! --------------------------------------
   ! figure out how to allocate aerosols/clouds and are the even turned on by the user?
-  if( all(aerosolType < 0) ) then
-    N_AEROSOLS_crtm = 0
-    aerosolsOn = .False.
-  else
-    N_AEROSOLS_crtm = N_aerosols
-    aerosolsOn = .True. 
-  endif
 
-  if( all(cloudType < 0) ) then
-    N_CLOUDS_crtm = 0
-    cloudsOn = .False.
-  else
-    N_CLOUDS_crtm = N_clouds
-    cloudsOn = .True. 
-  endif
+  call aerosols_and_clouds_on(aerosolType, cloudType, N_clouds, N_aerosols, & 
+                              N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
 
   WRITE( *,'(/5x,"Initializing the CRTM...")' )
 
@@ -657,6 +633,32 @@ end subroutine wrap_k_matrix
                            * Xin(interp_index(1,k):interp_index(2,k)) )
     END DO
   end subroutine applyAvg
+
+  subroutine aerosols_and_clouds_on(aerosolType, cloudType, N_clouds, N_aerosols, & 
+                                   N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
+
+  integer, intent(in) :: aerosolType(:,:), cloudType(:,:)
+  integer, intent(in) :: N_clouds, N_aerosols
+  integer, intent(out) :: N_AEROSOLS_crtm, N_CLOUDS_crtm
+  logical, intent(out) :: aerosolsOn, cloudsOn
+
+  if( all(aerosolType < 0) ) then
+    N_AEROSOLS_crtm = 0
+    aerosolsOn = .False.
+  else
+    N_AEROSOLS_crtm = N_aerosols
+    aerosolsOn = .True. 
+  endif
+
+  if( all(cloudType < 0) ) then
+    N_CLOUDS_crtm = 0
+    cloudsOn = .False.
+  else
+    N_CLOUDS_crtm = N_clouds
+    cloudsOn = .True. 
+  endif
+ 
+  end subroutine aerosols_and_clouds_on
 
   subroutine check_allocate_status(alloc_stat,message)
     integer :: alloc_stat
