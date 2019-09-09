@@ -127,6 +127,8 @@ class pyCRTM:
         self.SkinK = []
         self.SurfEmisK = []
         self.SurfReflK = []
+        self.windSpeedK = []
+        self.windDirectionK = []
         self.Wavenumbers = []
         self.wavenumbers = []
         self.wavenumber = []
@@ -208,7 +210,7 @@ class pyCRTM:
         self.setupGases() 
         self.surfEmisRefl = np.asfortranarray(self.surfEmisRefl) 
         #print(pycrtm.wrap_k_matrix.__doc__) 
-        self.Bt, layerOpticalDepths, self.TK, traceK, self.SkinK, self.SurfEmisK, self.ReflK =  pycrtm.wrap_k_matrix(  self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File,\
+        self.Bt, layerOpticalDepths, self.TK, traceK, self.SkinK, self.SurfEmisK, self.ReflK,self.WindSpeedK, self.windDirectionK  =  pycrtm.wrap_k_matrix(  self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File,\
                         self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], \
                         self.profiles.Pi, self.profiles.P, self.profiles.T, \
                         self.traceConc, self.traceIds,\

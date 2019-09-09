@@ -292,7 +292,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
                         surfaceTemperatures, surfaceFractions, LAI, salinity, windSpeed10m, windDirection10m, & 
                         landType, soilType, vegType, waterType, snowType, iceType, &  
                         nthreads, outTb, outTransmission, & 
-                        temperatureJacobian, traceJacobian, skinK, emisK, reflK,  emissivityReflectivity )      
+                        temperatureJacobian, traceJacobian, skinK, emisK, reflK, &
+                        windSpeedK, windDirectionK,  emissivityReflectivity )      
 
   ! ============================================================================
   ! STEP 1. **** ENVIRONMENT SETUP FOR CRTM USAGE ****
@@ -339,6 +340,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   real(kind=8), intent(out) :: outTb(N_profiles,nChan)
   real(kind=8), intent(inout):: emissivityReflectivity(2,N_profiles,nChan)
   real(kind=8), intent(out) :: skinK(N_profiles,nChan,4), emisK(N_profiles,nChan), reflK(N_profiles,nChan)
+  real(kind=8), intent(out) :: windSpeedK(N_profiles,nChan), windDirectionK(N_profiles,nChan)
   real(kind=8), intent(out) :: outTransmission(N_profiles, nChan, N_LAYERS) 
   real(kind=8), intent(out) :: temperatureJacobian(N_profiles, nChan, N_LAYERS)
   real(kind=8), intent(out) :: traceJacobian(N_profiles, nChan, N_LAYERS, N_trace)
@@ -436,7 +438,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   !$omp& shared(aerosolEffectiveRadius, aerosolConcentration, aerosolType)& 
   !$omp& shared(cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology)& 
   !$omp& shared(surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m)& 
-  !$omp& shared(skinK, emisK, reflK)& 
+  !$omp& shared(skinK, emisK, reflK, windSpeedK, windDirectionK)& 
   !$omp& shared(landType, soilType, vegType, waterType, snowType, iceType)&
   !$omp& shared(sensor_id,coefficientPath, chinfo, year, month, day)&
  
@@ -583,6 +585,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
         skinK(n,l,2) = sfc_K(l,1)%Water_Temperature
         skinK(n,l,3) = sfc_K(l,1)%Ice_Temperature
         skinK(n,l,4) = sfc_K(l,1)%Snow_Temperature
+        windSpeedK(n,l) = sfc_K(l,1)%Wind_Speed
+        windDirectionK(n,l) = sfc_K(l,1)%Wind_Direction
         emisK(n,l) = RTS_K(l,1)%Surface_Emissivity
         reflK(n,l) = RTS_K(l,1)%Surface_Reflectivity
         outTransmission(n, l, 1:n_layers) = rts(l, 1)%Layer_Optical_Depth
