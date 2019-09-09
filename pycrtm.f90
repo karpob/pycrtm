@@ -4,7 +4,7 @@ public :: wrap_forward
 public :: wrap_k_matrix 
 public :: applyAvg
 contains
-subroutine wrap_forward( coefficientPath, sensor_id_in, & 
+subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwaterCoeff_File, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, &
                         year, month, day, & 
                         nChan, N_Profiles, N_LAYERS, N_aerosols, N_clouds, N_trace, &
@@ -28,6 +28,8 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
   ! variables for interface
   character(len=*), intent(in) :: coefficientPath
   character(len=*), intent(in) :: sensor_id_in
+  character(len=*), intent(in) :: IRwaterCoeff_File
+  character(len=*), intent(in) :: MWwaterCoeff_File 
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
   integer, intent(in) :: nChan, N_Profiles, N_Layers, N_aerosols, N_clouds, N_trace
@@ -116,6 +118,8 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
                         File_Path=coefficientPath, &
                         Load_CloudCoeff = cloudsOn, &  
                         Load_AerosolCoeff = aerosolsOn, &
+                        IRwaterCoeff_File = IRwaterCoeff_File, & 
+                        MWwaterCoeff_File = MWwaterCoeff_File, & 
                         Quiet=.True. )
   call check_allocate_status(err_stat,'Error Initializing CRTM')
 
@@ -281,7 +285,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, &
 
 end subroutine wrap_forward
 
-subroutine wrap_k_matrix( coefficientPath, sensor_id_in, & 
+subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwaterCoeff_File, & 
                         zenithAngle, scanAngle, azimuthAngle, solarAngle, &  
                         year, month, day, & 
                         nChan, N_profiles, N_LAYERS, N_aerosols, N_clouds, N_trace, & 
@@ -314,6 +318,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   ! variables for interface
   character(len=*), intent(in) :: coefficientPath
   character(len=*), intent(in) :: sensor_id_in
+  character(len=*), intent(in) :: IRwaterCoeff_File
+  character(len=*), intent(in) :: MWwaterCoeff_File
   integer, intent(in) :: nChan, N_profiles, N_Layers, N_aerosols, N_clouds, N_trace 
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
@@ -409,7 +415,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, &
   err_stat = CRTM_Init( sensor_id,  chinfo, &
                         File_Path=coefficientPath, &
                         Load_CloudCoeff = cloudsOn, &  
-                        Load_AerosolCoeff = aerosolsOn, &  
+                        Load_AerosolCoeff = aerosolsOn, &
+                        IRwaterCoeff_File = IRwaterCoeff_File, & 
+                        MWwaterCoeff_File = MWwaterCoeff_File, &   
                         Quiet=.True. )
   call check_allocate_status(err_stat, 'Error initializing CRTM')
 

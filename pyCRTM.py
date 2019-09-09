@@ -136,6 +136,8 @@ class pyCRTM:
         self.wavelengthCm = []
         self.nChan = 0
         self.nThreads = 1
+        self.MWwaterCoeff_File = 'FASTEM6.MWwater.EmisCoeff.bin'
+        self.IRwaterCoeff_File = 'Nalli.IRwater.EmisCoeff.bin'
     def loadInst(self):
         if ( os.path.exists( os.path.join(self.coefficientPath, self.sensor_id+'.SpcCoeff.bin') ) ):
             o = readSpcCoeff(os.path.join(self.coefficientPath, self.sensor_id+'.SpcCoeff.bin'))
@@ -183,7 +185,7 @@ class pyCRTM:
         items =dir(self.profiles) 
         #print(pycrtm.__doc__) 
         self.Bt, layerOpticalDepths,\
-        self.surfEmisRefl  = pycrtm.wrap_forward( self.coefficientPath, self.sensor_id,\
+        self.surfEmisRefl  = pycrtm.wrap_forward( self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File,\
                         self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], self.nChan, \
                         self.profiles.Pi, self.profiles.P, self.profiles.T, self.traceConc,self.traceIds,\
                         self.profiles.aerosols[:,:,:,1], self.profiles.aerosols[:,:,:,0], self.profiles.aerosolType, \
@@ -202,7 +204,7 @@ class pyCRTM:
         self.setupGases() 
              
         self.Bt, layerOpticalDepths, self.TK, traceK, self.SkinK, self.SurfEmisK, self.ReflK,\
-        self.surfEmisRefl =  pycrtm.wrap_k_matrix(  self.coefficientPath, self.sensor_id,\
+        self.surfEmisRefl =  pycrtm.wrap_k_matrix(  self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File,\
                         self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], self.nChan, \
                         self.profiles.Pi, self.profiles.P, self.profiles.T, \
                         self.traceConc, self.traceIds,\
