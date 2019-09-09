@@ -177,21 +177,21 @@ class pyCRTM:
         #Fill array with what the user specified in profile.
         for i,g in enumerate(self.usedGases):
             self.traceConc[:,:,i] = self.profiles._asdict()[g][:,:]
-            self.traceIds[i] = gases[g]
-        
+            self.traceIds[i] = gases[g]    
     def runDirect(self):
-        
+        if(type(self.surfEmisRefl) == list):
+            if(len(self.surfEmisRefl)==0):
+                self.surfEmisRefl = -1.0*np.ones([2,self.profiles.Angles.shape[0],self.nChan])
+        #print(pycrtm.wrap_forward.__doc__)
         self.setupGases() 
-        items =dir(self.profiles) 
-        #print(pycrtm.__doc__) 
-        self.Bt, layerOpticalDepths,\
-        self.surfEmisRefl  = pycrtm.wrap_forward( self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File,\
-                        self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], self.nChan, \
+ 
+        self.Bt, layerOpticalDepths= pycrtm.wrap_forward( self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File,\
+                        self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], \
                         self.profiles.Pi, self.profiles.P, self.profiles.T, self.traceConc,self.traceIds,\
                         self.profiles.aerosols[:,:,:,1], self.profiles.aerosols[:,:,:,0], self.profiles.aerosolType, \
                         self.profiles.clouds[:,:,:,1], self.profiles.clouds[:,:,:,0], self.profiles.cloudType, self.profiles.cloudFraction, self.profiles.climatology, \
                         self.profiles.surfaceTemperatures, self.profiles.surfaceFractions, self.profiles.LAI, self.profiles.S2m[:,1], self.profiles.windSpeed10m, self.profiles.windDirection10m,\
-                        self.profiles.surfaceTypes[:,0], self.profiles.surfaceTypes[:,1], self.profiles.surfaceTypes[:,2], self.profiles.surfaceTypes[:,3], self.profiles.surfaceTypes[:,4], self.profiles.surfaceTypes[:,5], self.nThreads )
+                        self.profiles.surfaceTypes[:,0], self.profiles.surfaceTypes[:,1], self.profiles.surfaceTypes[:,2], self.profiles.surfaceTypes[:,3], self.profiles.surfaceTypes[:,4], self.profiles.surfaceTypes[:,5], self.nThreads, np.asfortranarray(self.surfEmisRefl) )
         self.TauLevels = np.zeros(layerOpticalDepths.shape)
         nprofile, nchan, nlay = layerOpticalDepths.shape
         # should use python threading here!
@@ -201,17 +201,20 @@ class pyCRTM:
             for c in list(range(nchan)):
                 self.TauLevels[p,c,:] = np.exp(-1.0*np.cumsum(layerOpticalDepths[p,c,:] ))
     def runK(self):
+        if(type(self.surfEmisRefl) == list):
+            if(len(self.surfEmisRefl)==0):
+                self.surfEmisRefl = -1.0*np.ones([2,self.profiles.Angles.shape[0],self.nChan])
+ 
         self.setupGases() 
-             
-        self.Bt, layerOpticalDepths, self.TK, traceK, self.SkinK, self.SurfEmisK, self.ReflK,\
-        self.surfEmisRefl =  pycrtm.wrap_k_matrix(  self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File,\
-                        self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], self.nChan, \
+        #print(pycrtm.wrap_k_matrix.__doc__) 
+        self.Bt, layerOpticalDepths, self.TK, traceK, self.SkinK, self.SurfEmisK, self.ReflK =  pycrtm.wrap_k_matrix(  self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File,\
+                        self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], \
                         self.profiles.Pi, self.profiles.P, self.profiles.T, \
                         self.traceConc, self.traceIds,\
                         self.profiles.aerosols[:,:,:,1], self.profiles.aerosols[:,:,:,0], self.profiles.aerosolType, \
                         self.profiles.clouds[:,:,:,1], self.profiles.clouds[:,:,:,0], self.profiles.cloudType, self.profiles.cloudFraction, self.profiles.climatology, \
                         self.profiles.surfaceTemperatures, self.profiles.surfaceFractions, self.profiles.LAI, self.profiles.S2m[:,1], self.profiles.windSpeed10m, self.profiles.windDirection10m,\
-                        self.profiles.surfaceTypes[:,0], self.profiles.surfaceTypes[:,1], self.profiles.surfaceTypes[:,2], self.profiles.surfaceTypes[:,3], self.profiles.surfaceTypes[:,4], self.profiles.surfaceTypes[:,5], self.nThreads )
+                        self.profiles.surfaceTypes[:,0], self.profiles.surfaceTypes[:,1], self.profiles.surfaceTypes[:,2], self.profiles.surfaceTypes[:,3], self.profiles.surfaceTypes[:,4], self.profiles.surfaceTypes[:,5], self.nThreads, np.asfortranarray(self.surfEmisRefl) )
         for i,ids in enumerate(list(self.traceIds)):
             # I think I can do something smarter here in python to contruct self.QK etc through an execute, or something along those lines?
             if(ids == gases['Q']):   self.QK   = traceK[:,:,:,i]

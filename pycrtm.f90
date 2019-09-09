@@ -52,8 +52,9 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   integer, intent(in) ::  landType(N_Profiles), soilType(N_Profiles), vegType(N_Profiles), waterType(N_Profiles)
   integer, intent(in) ::  snowType(N_Profiles), iceType(N_Profiles) 
   integer, intent(in) :: nthreads
-  real(kind=8), intent(out) :: outTb(N_Profiles,nChan), emissivityReflectivity(2,N_Profiles,nChan)
+  real(kind=8), intent(out) :: outTb(N_Profiles,nChan) 
   real(kind=8), intent(out) :: outTransmission(N_profiles, nChan, N_Layers)
+  real(kind=8), intent(inout) :: emissivityReflectivity(2,N_Profiles,nChan)
   character(len=256), dimension(1) :: sensor_id
   ! --------------------------
   ! Some non-CRTM-y Parameters
@@ -95,7 +96,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   TYPE(CRTM_Atmosphere_type),allocatable  :: atm(:)
   TYPE(CRTM_Surface_type), allocatable    :: sfc(:)
   TYPE(CRTM_RTSolution_type), ALLOCATABLE :: rts(:,:)
-  type(crtm_options_type)                 :: options
+  type(crtm_options_type)                 :: options(1)
   sensor_id(1) = sensor_id_in
   ! Program header
   ! --------------
@@ -221,22 +222,16 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
     call crtm_rtsolution_create( rts, n_layers )
     call check_logical_status( any(.not. crtm_rtsolution_associated( rts ) ),'rts failed to create.') 
 
-    ! Need options if you want to pass in emissivity.
-    !call crtm_options_create( options, nChan )
-    !if ( any(.not. crtm_options_associated( options )) ) then 
-    !    call display_message( subroutine_name, 'error allocating options', FAILURE)  
-    !    return
-    !endif
-
-    !options%Use_Emissivity = .false.
-    !options%Use_Direct_Reflectivity = .false.
+    call crtm_options_create( options, nChan )
+    call check_logical_status( any(.not. crtm_options_associated( options ) ),'options failed to create.' )
+    call set_emissivity(options, emissivityReflectivity(1,n,:), emissivityReflectivity(2,n,:))
 
     err_stat = CRTM_Forward( atm        , &  ! Input
                              sfc        , &  ! Input
                              geo        , &  ! Input
-                             chinfo, &  ! Input
-                             rts ) !,    & ! Output
-    !                        options = options ) 
+                             chinfo     , &  ! Input
+                             rts        , &  ! Output
+                             options = options ) 
 
     call check_allocate_status(err_stat, "Error Calling CRTM_Forward.")
 
@@ -266,6 +261,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
     ! ==========================================================================
     CALL CRTM_Atmosphere_Destroy(atm)
     call crtm_rtsolution_destroy(rts)
+    call crtm_options_destroy(options)
     deallocate(atm,stat=alloc_stat)
     call check_allocate_status(alloc_stat,"Atm failed to deallocate.")
     deallocate(sfc, stat=alloc_stat)
@@ -295,8 +291,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
                         cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology, & 
                         surfaceTemperatures, surfaceFractions, LAI, salinity, windSpeed10m, windDirection10m, & 
                         landType, soilType, vegType, waterType, snowType, iceType, &  
-                        outTb, outTransmission, & 
-                        temperatureJacobian, traceJacobian, skinK, emisK, reflK,  emissivityReflectivity, nthreads )      
+                        nthreads, outTb, outTransmission, & 
+                        temperatureJacobian, traceJacobian, skinK, emisK, reflK,  emissivityReflectivity )      
 
   ! ============================================================================
   ! STEP 1. **** ENVIRONMENT SETUP FOR CRTM USAGE ****
@@ -340,7 +336,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   real(kind=8), intent(in) :: salinity(N_profiles), windSpeed10m(N_profiles), windDirection10m(N_profiles)
   integer, intent(in) :: landType(N_profiles), soilType(N_profiles), vegType(N_profiles), waterType(N_profiles) 
   integer, intent(in) :: snowType(N_profiles), iceType(N_profiles) 
-  real(kind=8), intent(out) :: outTb(N_profiles,nChan), emissivityReflectivity(2,N_profiles,nChan)
+  real(kind=8), intent(out) :: outTb(N_profiles,nChan)
+  real(kind=8), intent(inout):: emissivityReflectivity(2,N_profiles,nChan)
   real(kind=8), intent(out) :: skinK(N_profiles,nChan,4), emisK(N_profiles,nChan), reflK(N_profiles,nChan)
   real(kind=8), intent(out) :: outTransmission(N_profiles, nChan, N_LAYERS) 
   real(kind=8), intent(out) :: temperatureJacobian(N_profiles, nChan, N_LAYERS)
@@ -375,7 +372,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   ! ---------------------------------------------
   TYPE(CRTM_ChannelInfo_type)             :: chinfo(1)
   TYPE(CRTM_Geometry_type)                :: geo(1)
-
+  type(crtm_options_type)                 :: options(1)
   ! 3b. Define the FORWARD variables
   ! --------------------------------
   TYPE(CRTM_Atmosphere_type), ALLOCATABLE :: atm(:)
@@ -551,6 +548,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
     !
     ! 8b. The K-matrix model
     ! ----------------------
+    call crtm_options_create( options, nChan )
+    call check_logical_status( any(.not. crtm_options_associated( options ) ),'options failed to create' )
+    call set_emissivity(options, emissivityReflectivity(1,n,:), emissivityReflectivity(2,n,:))
 
     err_stat = CRTM_K_Matrix( atm        , &  ! FORWARD  Input
                               sfc        , &  ! FORWARD  Input
@@ -559,7 +559,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
                               chinfo     , &  ! Input
                               atm_K      , &  ! K-MATRIX Output
                               sfc_K      , &  ! K-MATRIX Output
-                              rts          )  ! FORWARD  Output
+                              rts        , &  ! FORWARD  Output
+                              Options=options)
     call check_allocate_status(err_stat,'Error calling the CRTM K-Matrix Model')    
 
     ! ==========================================================================
@@ -591,7 +592,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
     emissivityReflectivity(2,n,:) = rts(:,1)%Surface_Reflectivity
     CALL CRTM_Atmosphere_Destroy(atm)
     CALL CRTM_Atmosphere_Destroy(atm_k)
-
+    call crtm_options_destroy(options)
     DEALLOCATE(atm_k, STAT = alloc_stat)
     call check_allocate_status(alloc_stat, 'Atm_k deallocate failed')
 
@@ -671,6 +672,27 @@ end subroutine wrap_k_matrix
   endif
  
   end subroutine aerosols_and_clouds_on
+
+  subroutine set_emissivity(options, emiss, refl)
+    use crtm_module
+    implicit none
+    type(crtm_options_type), intent(inout) :: options(1)
+    real(kind=8) :: emiss(:), refl(:)
+
+    if ( all( emiss < -0.9999 ) ) then
+        Options(1)%Use_Emissivity = .false.   ! compute it
+    else
+        Options(1)%Use_Emissivity = .true.    ! user supplied
+        Options(1)%Emissivity(:)=emiss(:)
+    endif 
+
+    if ( all( refl < -0.9999) ) then
+        Options(1)%Use_Direct_Reflectivity = .false.
+    else
+        Options(1)%Use_Direct_Reflectivity = .true.  ! 1: User-supplied
+        Options(1)%Direct_Reflectivity(:)=refl(:) 
+    endif
+  end subroutine set_emissivity
 
   subroutine check_allocate_status(alloc_stat,message)
     integer :: alloc_stat

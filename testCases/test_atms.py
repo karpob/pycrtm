@@ -68,7 +68,8 @@ def main(coefficientPath, sensor_id):
     crtmOb.runDirect()
     forwardTb = crtmOb.Bt
     forwardEmissivity = crtmOb.surfEmisRefl[0,:]
-
+    #make K matrix run surfEmisRefl again.
+    crtmOb.surfEmisRefl = []
     crtmOb.runK()
     kTb = crtmOb.Bt
     kEmissivity = crtmOb.surfEmisRefl[0,:]
