@@ -137,6 +137,7 @@ class pyCRTM:
         self.wavelengthMicrons = []
         self.wavelengthCm = []
         self.nChan = 0
+        self.output_tb_flag = True
         self.nThreads = 1
         self.MWwaterCoeff_File = 'FASTEM6.MWwater.EmisCoeff.bin'
         self.IRwaterCoeff_File = 'Nalli.IRwater.EmisCoeff.bin'
@@ -187,7 +188,7 @@ class pyCRTM:
         #print(pycrtm.wrap_forward.__doc__)
         self.setupGases() 
         self.surfEmisRefl = np.asfortranarray(self.surfEmisRefl) 
-        self.Bt, layerOpticalDepths = pycrtm.wrap_forward( self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File,\
+        self.Bt, layerOpticalDepths = pycrtm.wrap_forward( self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File, self.output_tb_flag,\
                         self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], \
                         self.profiles.Pi, self.profiles.P, self.profiles.T, self.traceConc,self.traceIds,\
                         self.profiles.aerosols[:,:,:,1], self.profiles.aerosols[:,:,:,0], self.profiles.aerosolType, \
@@ -211,7 +212,7 @@ class pyCRTM:
         self.surfEmisRefl = np.asfortranarray(self.surfEmisRefl) 
         #print(pycrtm.wrap_k_matrix.__doc__) 
         self.Bt, layerOpticalDepths, self.TK, traceK, self.SkinK, self.SurfEmisK, self.ReflK,self.WindSpeedK, self.windDirectionK  =  pycrtm.wrap_k_matrix(  self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File,\
-                        self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], \
+                        self.output_tb_flag, self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], \
                         self.profiles.Pi, self.profiles.P, self.profiles.T, \
                         self.traceConc, self.traceIds,\
                         self.profiles.aerosols[:,:,:,1], self.profiles.aerosols[:,:,:,0], self.profiles.aerosolType, \

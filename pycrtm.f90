@@ -5,7 +5,7 @@ public :: wrap_k_matrix
 public :: applyAvg
 contains
 subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwaterCoeff_File, & 
-                        zenithAngle, scanAngle, azimuthAngle, solarAngle, &
+                        output_tb_flag, zenithAngle, scanAngle, azimuthAngle, solarAngle, &
                         year, month, day, & 
                         nChan, N_Profiles, N_LAYERS, N_aerosols, N_clouds, N_trace, &
                         pressureLevels, pressureLayers, temperatureLayers, & 
@@ -29,7 +29,8 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   character(len=*), intent(in) :: coefficientPath
   character(len=*), intent(in) :: sensor_id_in
   character(len=*), intent(in) :: IRwaterCoeff_File
-  character(len=*), intent(in) :: MWwaterCoeff_File 
+  character(len=*), intent(in) :: MWwaterCoeff_File
+  logical, intent(in) :: output_tb_flag 
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
   integer, intent(in) :: nChan, N_Profiles, N_Layers, N_aerosols, N_clouds, N_trace
@@ -148,7 +149,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   ! ----------------------
   !$ call omp_set_num_threads(nthreads)
   !$omp parallel do default(private) shared(chinfo,emissivityReflectivity,outTb,outTransmission)& 
-  !$omp& shared(zenithAngle, scanAngle, azimuthAngle, solarAngle)&
+  !$omp& shared(zenithAngle, scanAngle, azimuthAngle, solarAngle, output_tb_flag)&
   !$omp& shared(nChan, N_Profiles, N_LAYERS, N_Clouds_crtm, N_aerosols_crtm, N_trace)&
   !$omp& shared(pressureLevels, pressureLayers, temperatureLayers)& 
   !$omp& shared(traceConcLayers,trace_IDs)& 
@@ -246,8 +247,14 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
        outTransmission(n, l,1:n_layers) = rts(l,1)%Layer_Optical_Depth
     enddo
     emissivityReflectivity(1,n,:) = rts(:,1)%Surface_Emissivity 
-    emissivityReflectivity(2,n,:) = rts(:,1)%Surface_Reflectivity 
-    outTb(n,:) = rts(:,1)%Brightness_Temperature 
+    emissivityReflectivity(2,n,:) = rts(:,1)%Surface_Reflectivity
+
+    if (output_tb_flag) then 
+        outTb(n,:) = rts(:,1)%Brightness_Temperature
+    else
+        outTb(n,:) = rts(:,1)%Radiance
+    endif 
+ 
     
     ! ==========================================================================
     ! STEP 9. **** CLEAN UP FOR NEXT PROFILE ****
@@ -282,7 +289,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
 end subroutine wrap_forward
 
 subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwaterCoeff_File, & 
-                        zenithAngle, scanAngle, azimuthAngle, solarAngle, &  
+                        output_tb_flag, zenithAngle, scanAngle, azimuthAngle, solarAngle, &  
                         year, month, day, & 
                         nChan, N_profiles, N_LAYERS, N_aerosols, N_clouds, N_trace, & 
                         pressureLevels, pressureLayers, temperatureLayers, & 
@@ -317,6 +324,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   character(len=*), intent(in) :: sensor_id_in
   character(len=*), intent(in) :: IRwaterCoeff_File
   character(len=*), intent(in) :: MWwaterCoeff_File
+  logical, intent(in) :: output_tb_flag
   integer, intent(in) :: nChan, N_profiles, N_Layers, N_aerosols, N_clouds, N_trace 
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
@@ -430,7 +438,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   ! ----------------------
   !$ call omp_set_num_threads(nthreads)
   !$omp parallel do default(private) shared(emissivityReflectivity,outTb)&
-  !$omp& shared(temperatureJacobian)& 
+  !$omp& shared(temperatureJacobian, output_tb_flag)& 
   !$omp& shared(traceJacobian,outTransmission)&
   !$omp& shared(nChan, N_Layers,N_CLOUDS_crtm, N_AEROSOLS_crtm, N_trace)&
   !$omp& shared(pressureLevels, pressureLayers, temperatureLayers)& 
@@ -535,8 +543,13 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
     ! 7b. Inintialize the K-matrix INPUT so
     !     that the results are dTb/dx
     ! -------------------------------------
-    rts_K%Radiance               = ZERO
-    rts_K%Brightness_Temperature = ONE
+    if (output_tb_flag) then
+        rts_K%Radiance               = ZERO
+        rts_K%Brightness_Temperature = ONE
+    else 
+        rts_K%Radiance               = ONE
+        rts_K%Brightness_Temperature = ZERO
+    endif
     ! ==========================================================================
     
     ! 4a.1 Profile #1
@@ -591,7 +604,11 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
         reflK(n,l) = RTS_K(l,1)%Surface_Reflectivity
         outTransmission(n, l, 1:n_layers) = rts(l, 1)%Layer_Optical_Depth
     enddo
-    outTb(n,:) = rts(:,1)%Brightness_Temperature 
+    if (output_tb_flag) then 
+        outTb(n,:) = rts(:,1)%Brightness_Temperature
+    else
+        outTb(n,:) = rts(:,1)%Radiance
+    endif 
     emissivityReflectivity(1,n,:) = rts(:,1)%Surface_Emissivity
     emissivityReflectivity(2,n,:) = rts(:,1)%Surface_Reflectivity
     CALL CRTM_Atmosphere_Destroy(atm)
