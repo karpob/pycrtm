@@ -17,8 +17,10 @@ class profileInterpolate:
         self.pOutputGrid = np.zeros([self.nprof,self.nv])
         self.itemsInterp = {}
         for i in list(self.items.keys()):
-            self.itemsInterp[i] = np.zeros([self.nprof,self.nv])
-
+            if(self.items[i].ndim<3):
+                self.itemsInterp[i] = np.zeros([self.nprof,self.nv])
+            else:
+                self.itemsInterp[i] = np.zeros([self.nprof,self.items[i].shape[1], self.nv])
     def logLinear(self, x, xo, yo):
         """
         Do a log-linear interpolation.
@@ -61,7 +63,11 @@ class profileInterpolate:
         """
         for i in list( self.items.keys() ):
             for ii in list(range(self.nprof)):
-                self.itemsInterp[i][ii,:] = self.interp(self.pOutput, self.pInput[ii,:], self.items[i][ii,:], method = method)
+                if(self.items[i].ndim>2): # jacobian with profile, channels, nlevels
+                    for k in list(range(self.items[i].shape[1])):
+                        self.itemsInterp[i][ii,k,:] = self.interp(self.pOutput, self.pInput[ii,:], self.items[i][ii,k,:], method = method)
+                else:
+                    self.itemsInterp[i][ii,:] = self.interp(self.pOutput, self.pInput[ii,:], self.items[i][ii,:], method = method)
 
         # output grid
         if(method=='average'):
@@ -72,4 +78,3 @@ class profileInterpolate:
                 self.pOutputGrid[i,:] = self.pOutput     
     def get(self):
         return self.pOutput, self.itemsInterp 
-    
