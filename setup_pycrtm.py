@@ -39,7 +39,16 @@ def main( a ):
         
         print("Moving to {}".format( os.path.join(installPath,'crtm') ))
         # get rid of the version to make things easier later on for pycrtm
-        os.rename(glob.glob(os.path.join(installPath,'crtm_v*'))[0], os.path.join(installPath,'crtm'))
+        versionedDirz = glob.glob(os.path.join(installPath,'crtm_v*'))
+        count = 0
+        for v in versionedDirz:
+            if(not os.path.isfile(v) and os.path.isdir(v) and count == 0):
+                versionedDir = v
+                count += 1
+            elif(not os.path.isfile(v) and os.path.isdir(v) and count > 0):
+                sys.exit("Too Many directories with crtm_v*! delete something! {}".format(' '.join(versionedDirz)))
+
+        os.rename(versionedDir, os.path.join(installPath,'crtm'))
 
         print("Copying coefficients to {}".format( os.path.join(installPath,'crtm','crtm_coef') ) )   
         # make the coef directory along with the install location
@@ -123,9 +132,7 @@ def downloadExtractTar( tarballPath, scriptDir ):
         os.makedirs(tarballPath)
     os.chdir(tarballPath)
     if(len(glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz')))==0):
-        print("Downloading CRTM Tarball {}.\
-               This will likely take a while, because \
-               this server is *insanely* slow.".format ('http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz'))
+        print("Downloading CRTM Tarball {}.\nThis will likely take a while, because ftp.emc.ncep.noaa.gov is quite slow.".format ('http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz'))
         urllib.request.urlretrieve("http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz", "crtm_v2.3.0.tar.gz") 
     print('tarballPath',tarballPath)
     print("Untarring CRTM Tarball {}".format (glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz'))[0]))
