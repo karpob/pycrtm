@@ -1,11 +1,8 @@
 module pycrtm 
-private
-public :: wrap_forward 
-public :: wrap_k_matrix 
-public :: applyAvg
+real(kind=8), allocatable :: outTransmission(:, :, :) ! outTransmission(N_profiles, nChan, N_Layers)
 contains
 subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwaterCoeff_File, & 
-                        output_tb_flag, zenithAngle, scanAngle, azimuthAngle, solarAngle, &
+                        output_tb_flag, output_transmission_flag,  zenithAngle, scanAngle, azimuthAngle, solarAngle, &
                         year, month, day, & 
                         nChan, N_Profiles, N_LAYERS, N_aerosols, N_clouds, N_trace, &
                         pressureLevels, pressureLayers, temperatureLayers, & 
@@ -14,7 +11,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
                         cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology, & 
                         surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m, & 
                         landType, soilType, vegType, waterType, snowType, iceType, nthreads, &  
-                        outTb, outTransmission, & 
+                        outTb, & 
                         emissivityReflectivity )      
 
   ! ============================================================================
@@ -30,7 +27,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   character(len=*), intent(in) :: sensor_id_in
   character(len=*), intent(in) :: IRwaterCoeff_File
   character(len=*), intent(in) :: MWwaterCoeff_File
-  logical, intent(in) :: output_tb_flag 
+  logical, intent(in) :: output_tb_flag, output_transmission_flag 
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
   integer, intent(in) :: nChan, N_Profiles, N_Layers, N_aerosols, N_clouds, N_trace
@@ -54,7 +51,6 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   integer, intent(in) ::  snowType(N_Profiles), iceType(N_Profiles) 
   integer, intent(in) :: nthreads
   real(kind=8), intent(out) :: outTb(N_Profiles,nChan) 
-  real(kind=8), intent(out) :: outTransmission(N_profiles, nChan, N_Layers)
   real(kind=8), intent(inout) :: emissivityReflectivity(2,N_Profiles,nChan)
   character(len=256), dimension(1) :: sensor_id
   ! --------------------------
@@ -111,8 +107,9 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   !
   ! 4a. Initialise all the sensors at once
   ! --------------------------------------
+  ! allocate globals in the module based upon user selection through interface.
+  call check_and_allocate_globals(output_transmission_flag, N_Profiles, nChan, N_layers)
   ! Figure out what needs allocating for Clouds and Aerosols. Are they on?
-
   call aerosols_and_clouds_on(aerosolType, cloudType, N_clouds, N_aerosols, & 
                               N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
   
@@ -152,7 +149,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   !$omp& shared(zenithAngle, scanAngle, azimuthAngle, solarAngle, output_tb_flag)&
   !$omp& shared(nChan, N_Profiles, N_LAYERS, N_Clouds_crtm, N_aerosols_crtm, N_trace)&
   !$omp& shared(pressureLevels, pressureLayers, temperatureLayers)& 
-  !$omp& shared(traceConcLayers,trace_IDs)& 
+  !$omp& shared(traceConcLayers,trace_IDs, output_transmission_flag)& 
   !$omp& shared(aerosolEffectiveRadius, aerosolConcentration, aerosolType, cloudsOn, aerosolsOn)& 
   !$omp& shared(cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology)& 
   !$omp& shared(surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m)& 
@@ -243,9 +240,11 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
     ! CRTM_RTSolution_Inspect in the file CRTM_RTSolution_Define.f90 to
     ! select the needed variables for outputs.  These variables are contained
     ! in the structure RTSolution.
-    do l=1,nChan
-       outTransmission(n, l,1:n_layers) = rts(l,1)%Layer_Optical_Depth
-    enddo
+    if (output_transmission_flag) then 
+        do l=1,nChan
+            outTransmission(n, l,1:n_layers) = rts(l,1)%Layer_Optical_Depth
+        enddo
+    endif
     emissivityReflectivity(1,n,:) = rts(:,1)%Surface_Emissivity 
     emissivityReflectivity(2,n,:) = rts(:,1)%Surface_Reflectivity
 
@@ -289,7 +288,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
 end subroutine wrap_forward
 
 subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwaterCoeff_File, & 
-                        output_tb_flag, zenithAngle, scanAngle, azimuthAngle, solarAngle, &  
+                        output_tb_flag, output_transmission_flag, zenithAngle, scanAngle, azimuthAngle, solarAngle, &  
                         year, month, day, & 
                         nChan, N_profiles, N_LAYERS, N_aerosols, N_clouds, N_trace, & 
                         pressureLevels, pressureLayers, temperatureLayers, & 
@@ -298,7 +297,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
                         cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology, & 
                         surfaceTemperatures, surfaceFractions, LAI, salinity, windSpeed10m, windDirection10m, & 
                         landType, soilType, vegType, waterType, snowType, iceType, &  
-                        nthreads, outTb, outTransmission, & 
+                        nthreads, outTb, & 
                         temperatureJacobian, traceJacobian, skinK, emisK, reflK, &
                         windSpeedK, windDirectionK,  emissivityReflectivity )      
 
@@ -324,7 +323,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   character(len=*), intent(in) :: sensor_id_in
   character(len=*), intent(in) :: IRwaterCoeff_File
   character(len=*), intent(in) :: MWwaterCoeff_File
-  logical, intent(in) :: output_tb_flag
+  logical, intent(in) :: output_tb_flag, output_transmission_flag
   integer, intent(in) :: nChan, N_profiles, N_Layers, N_aerosols, N_clouds, N_trace 
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
@@ -349,7 +348,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   real(kind=8), intent(inout):: emissivityReflectivity(2,N_profiles,nChan)
   real(kind=8), intent(out) :: skinK(N_profiles,nChan,4), emisK(N_profiles,nChan), reflK(N_profiles,nChan)
   real(kind=8), intent(out) :: windSpeedK(N_profiles,nChan), windDirectionK(N_profiles,nChan)
-  real(kind=8), intent(out) :: outTransmission(N_profiles, nChan, N_LAYERS) 
   real(kind=8), intent(out) :: temperatureJacobian(N_profiles, nChan, N_LAYERS)
   real(kind=8), intent(out) :: traceJacobian(N_profiles, nChan, N_LAYERS, N_trace)
   integer, intent(in) :: nthreads
@@ -412,8 +410,10 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   !
   ! 4a. Initialise all the sensors at once
   ! --------------------------------------
-  ! figure out how to allocate aerosols/clouds and are the even turned on by the user?
+  ! allocate globals in the module based upon user selection through interface.
+  call check_and_allocate_globals(output_transmission_flag, N_Profiles, nChan, N_layers)
 
+  ! figure out how to allocate aerosols/clouds and are the even turned on by the user?
   call aerosols_and_clouds_on(aerosolType, cloudType, N_clouds, N_aerosols, & 
                               N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
 
@@ -438,7 +438,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   ! ----------------------
   !$ call omp_set_num_threads(nthreads)
   !$omp parallel do default(private) shared(emissivityReflectivity,outTb)&
-  !$omp& shared(temperatureJacobian, output_tb_flag)& 
+  !$omp& shared(temperatureJacobian, output_tb_flag, output_transmission_flag)& 
   !$omp& shared(traceJacobian,outTransmission)&
   !$omp& shared(nChan, N_Layers,N_CLOUDS_crtm, N_AEROSOLS_crtm, N_trace)&
   !$omp& shared(pressureLevels, pressureLayers, temperatureLayers)& 
@@ -602,7 +602,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
         windDirectionK(n,l) = sfc_K(l,1)%Wind_Direction
         emisK(n,l) = RTS_K(l,1)%Surface_Emissivity
         reflK(n,l) = RTS_K(l,1)%Surface_Reflectivity
-        outTransmission(n, l, 1:n_layers) = rts(l, 1)%Layer_Optical_Depth
+        if(output_transmission_flag) then 
+            outTransmission(n, l, 1:n_layers) = rts(l, 1)%Layer_Optical_Depth
+        endif
     enddo
     if (output_tb_flag) then 
         outTb(n,:) = rts(:,1)%Brightness_Temperature
@@ -643,6 +645,15 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   call check_allocate_status(err_stat, 'Error destroying the CRTM.')
   ! ==========================================================================
 end subroutine wrap_k_matrix
+
+  subroutine check_and_allocate_globals(output_transmission_flag, N_Profiles, nChan, N_layers)
+  logical, intent(in) :: output_transmission_flag
+  integer, intent(in) :: N_profiles, nChan, N_layers
+
+  if(output_transmission_flag) then
+    if (.not. allocated(outTransmission)) allocate( outTransmission(N_Profiles, nChan, N_layers) ) 
+  endif
+  end subroutine check_and_allocate_globals
 
   subroutine applyAvg( Ref_LnPressure, User_LnPressure, Nref, Nuser, Xin, Xout ) 
     USE ODPS_CoordinateMapping

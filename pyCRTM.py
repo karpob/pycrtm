@@ -131,6 +131,7 @@ class pyCRTM:
         self.wavelengthCm = []
         self.nChan = 0
         self.output_tb_flag = True
+        self.StoreTrans = True
         self.nThreads = 1
         self.MWwaterCoeff_File = 'FASTEM6.MWwater.EmisCoeff.bin'
         self.IRwaterCoeff_File = 'Nalli.IRwater.EmisCoeff.bin'
@@ -181,21 +182,24 @@ class pyCRTM:
         #print(pycrtm.wrap_forward.__doc__)
         self.setupGases() 
         self.surfEmisRefl = np.asfortranarray(self.surfEmisRefl) 
-        self.Bt, layerOpticalDepths = pycrtm.wrap_forward( self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File, self.output_tb_flag,\
+        self.Bt = pycrtm.wrap_forward( self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File, self.output_tb_flag,self.StoreTrans,\
                         self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], \
                         self.profiles.Pi, self.profiles.P, self.profiles.T, self.traceConc,self.traceIds,\
                         self.profiles.aerosols[:,:,:,1], self.profiles.aerosols[:,:,:,0], self.profiles.aerosolType, \
                         self.profiles.clouds[:,:,:,1], self.profiles.clouds[:,:,:,0], self.profiles.cloudType, self.profiles.cloudFraction, self.profiles.climatology, \
                         self.profiles.surfaceTemperatures, self.profiles.surfaceFractions, self.profiles.LAI, self.profiles.S2m[:,1], self.profiles.windSpeed10m, self.profiles.windDirection10m,\
                         self.profiles.surfaceTypes[:,0], self.profiles.surfaceTypes[:,1], self.profiles.surfaceTypes[:,2], self.profiles.surfaceTypes[:,3], self.profiles.surfaceTypes[:,4], self.profiles.surfaceTypes[:,5], self.nThreads, self.surfEmisRefl )
-        self.TauLevels = np.zeros(layerOpticalDepths.shape)
-        nprofile, nchan, nlay = layerOpticalDepths.shape
-        # should use python threading here!
-        # TauLevels following RTTOV convention: 
-        # "Transmittance from each user pressure level to TOA." 
-        for p in list(range(nprofile)):
-            for c in list(range(nchan)):
-                self.TauLevels[p,c,:] = np.exp(-1.0*np.cumsum(layerOpticalDepths[p,c,:] ))
+        
+        if(self.StoreTrans):
+            layerOpticalDepths = pycrtm.outtransmission
+            self.TauLevels = np.zeros(layerOpticalDepths.shape)
+            nprofile, nchan, nlay = layerOpticalDepths.shape
+            # should use python threading here!
+            # TauLevels following RTTOV convention: 
+            # "Transmittance from each user pressure level to TOA." 
+            for p in list(range(nprofile)):
+                for c in list(range(nchan)):
+                    self.TauLevels[p,c,:] = np.exp(-1.0*np.cumsum(layerOpticalDepths[p,c,:] ))
     def runK(self):
         if(type(self.surfEmisRefl) == list):
             if(len(self.surfEmisRefl)==0):
@@ -204,8 +208,9 @@ class pyCRTM:
         self.setupGases() 
         self.surfEmisRefl = np.asfortranarray(self.surfEmisRefl) 
         #print(pycrtm.wrap_k_matrix.__doc__) 
-        self.Bt, layerOpticalDepths, self.TK, traceK, self.SkinK, self.SurfEmisK, self.ReflK,self.WindSpeedK, self.windDirectionK  =  pycrtm.wrap_k_matrix(  self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File,\
-                        self.output_tb_flag, self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], \
+        self.Bt, self.TK, traceK, self.SkinK, self.SurfEmisK, self.ReflK,self.WindSpeedK, self.windDirectionK  =  pycrtm.wrap_k_matrix(  self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File,\
+                        self.output_tb_flag, self.StoreTrans,\
+                         self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], \
                         self.profiles.Pi, self.profiles.P, self.profiles.T, \
                         self.traceConc, self.traceIds,\
                         self.profiles.aerosols[:,:,:,1], self.profiles.aerosols[:,:,:,0], self.profiles.aerosolType, \
@@ -226,15 +231,16 @@ class pyCRTM:
             self.traceK = []
             self.traceConc = []     
       
-
-        self.TauLevels = np.zeros(layerOpticalDepths.shape)
-        nprofile, nchan, nlay = layerOpticalDepths.shape
-        # should use python threading here!
-        # TauLevels following RTTOV convention: 
-        # "Transmittance from each user pressure level to TOA." 
-        for p in list(range(nprofile)):
-            for c in list(range(nchan)):
-                self.TauLevels[p,c,:] = np.exp(-1.0*np.cumsum(layerOpticalDepths[p,c,:]))
+        if(self.StoreTrans):
+            layerOpticalDepths = pycrtm.outtransmission
+            self.TauLevels = np.zeros(layerOpticalDepths.shape)
+            nprofile, nchan, nlay = layerOpticalDepths.shape
+            # should use python threading here!
+            # TauLevels following RTTOV convention: 
+            # "Transmittance from each user pressure level to TOA." 
+            for p in list(range(nprofile)):
+                for c in list(range(nchan)):
+                    self.TauLevels[p,c,:] = np.exp(-1.0*np.cumsum(layerOpticalDepths[p,c,:]))
 
 
 if __name__ == "__main__":
