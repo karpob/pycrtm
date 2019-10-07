@@ -191,15 +191,7 @@ class pyCRTM:
                         self.profiles.surfaceTypes[:,0], self.profiles.surfaceTypes[:,1], self.profiles.surfaceTypes[:,2], self.profiles.surfaceTypes[:,3], self.profiles.surfaceTypes[:,4], self.profiles.surfaceTypes[:,5], self.nThreads, self.surfEmisRefl )
         
         if(self.StoreTrans):
-            layerOpticalDepths = pycrtm.outtransmission
-            self.TauLevels = np.zeros(layerOpticalDepths.shape)
-            nprofile, nchan, nlay = layerOpticalDepths.shape
-            # should use python threading here!
-            # TauLevels following RTTOV convention: 
-            # "Transmittance from each user pressure level to TOA." 
-            for p in list(range(nprofile)):
-                for c in list(range(nchan)):
-                    self.TauLevels[p,c,:] = np.exp(-1.0*np.cumsum(layerOpticalDepths[p,c,:] ))
+            self.TauLevels = pycrtm.outtransmission
     def runK(self):
         if(type(self.surfEmisRefl) == list):
             if(len(self.surfEmisRefl)==0):
@@ -232,16 +224,7 @@ class pyCRTM:
             self.traceConc = []     
       
         if(self.StoreTrans):
-            layerOpticalDepths = pycrtm.outtransmission
-            self.TauLevels = np.zeros(layerOpticalDepths.shape)
-            nprofile, nchan, nlay = layerOpticalDepths.shape
-            # should use python threading here!
-            # TauLevels following RTTOV convention: 
-            # "Transmittance from each user pressure level to TOA." 
-            for p in list(range(nprofile)):
-                for c in list(range(nchan)):
-                    self.TauLevels[p,c,:] = np.exp(-1.0*np.cumsum(layerOpticalDepths[p,c,:]))
-
+            self.TauLevels = pycrtm.outtransmission
 
 if __name__ == "__main__":
     thisDir = os.path.dirname(os.path.abspath(__file__))
