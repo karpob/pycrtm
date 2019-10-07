@@ -242,7 +242,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
     ! in the structure RTSolution.
     if (output_transmission_flag) then 
         do l=1,nChan
-            outTransmission(n, l,1:n_layers) = exp( -1.0*cumsum( rts(l,1)%Layer_Optical_Depth ) )
+            outTransmission(n, l,1:n_layers) = dexp(-1.0*cumsum( rts(l,1)%Layer_Optical_Depth )) 
         enddo
     endif
     emissivityReflectivity(1,n,:) = rts(:,1)%Surface_Emissivity 
@@ -603,7 +603,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
         emisK(n,l) = RTS_K(l,1)%Surface_Emissivity
         reflK(n,l) = RTS_K(l,1)%Surface_Reflectivity
         if(output_transmission_flag) then 
-            outTransmission(n, l, 1:n_layers) = exp( -1.0*cumsum( rts(l, 1)%Layer_Optical_Depth ) )
+            outTransmission(n, l, 1:n_layers) = dexp(-1.0*cumsum( rts(l, 1)%Layer_Optical_Depth(1:n_layers) ) )
         endif
     enddo
     if (output_tb_flag) then 
