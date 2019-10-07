@@ -75,17 +75,17 @@ def profilesCreate( nProfiles, nLevels, nAerosols=1, nClouds=1, additionalGases=
     p['DateTimes'][:,1] = 1
     p['DateTimes'][:,2] = 1
     # concentration, effective radius
-    p['aerosols'] = np.nan*np.ones([nProfiles, nLevels, nAerosols, 2])
-    p['aerosolType'] =-1 *np.ones([nProfiles,nAerosols], dtype =int)
+    if(nAerosols>0):
+        p['aerosols'] = np.nan*np.ones([nProfiles, nLevels, nAerosols, 2])
+        p['aerosolType'] =-1 *np.ones([nProfiles,nAerosols], dtype =int)
     
     # concentration, effective radius
-    p['clouds'] =  np.nan*np.ones([nProfiles, nLevels,  nClouds, 2])
-    p['cloudType'] = -1 *np.ones([nProfiles,nClouds], dtype =int)
-    p['cloudFraction'] = np.zeros([nProfiles,nLevels])
+    if(nClouds>0):
+        p['clouds'] =  np.nan*np.ones([nProfiles, nLevels,  nClouds, 2])
+        p['cloudType'] = -1 *np.ones([nProfiles,nClouds], dtype =int)
+        p['cloudFraction'] = np.zeros([nProfiles,nLevels])
 
     p['LAI'] = np.zeros([nProfiles])
-    # set so clouds are off unless you add something
-    p['clouds'][:,:,0] = -1
     # surface 
     p['surfaceTemperatures'] = np.zeros([nProfiles,4])
     p['surfaceFractions'] = np.zeros([nProfiles,4])
@@ -181,12 +181,21 @@ class pyCRTM:
                 self.surfEmisRefl = -1.0*np.ones([2,self.profiles.Angles.shape[0],self.nChan])
         #print(pycrtm.wrap_forward.__doc__)
         self.setupGases() 
-        self.surfEmisRefl = np.asfortranarray(self.surfEmisRefl) 
+        self.surfEmisRefl = np.asfortranarray(self.surfEmisRefl)
+        if('aerosolType' in list(self.profiles._asdict().keys())): 
+            pycrtm.aerosoltype = self.profiles.aerosolType
+            pycrtm.aerosoleffectiveradius = self.profiles.aerosols[:,:,:,1]
+            pycrtm.aerosolconcentration = self.profiles.aerosols[:,:,:,0]
+        if('cloudType' in list(self.profiles._asdict().keys())):
+            pycrtm.cloudtype = self.profiles.cloudType
+            pycrtm.cloudeffectiveradius = self.profiles.clouds[:,:,:,1]
+            pycrtm.cloudconcentration = self.profiles.clouds[:,:,:,0]
+            pycrtm.cloudfraction =  self.profiles.cloudFraction
+
         self.Bt = pycrtm.wrap_forward( self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File, self.output_tb_flag,self.StoreTrans,\
                         self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], \
                         self.profiles.Pi, self.profiles.P, self.profiles.T, self.traceConc,self.traceIds,\
-                        self.profiles.aerosols[:,:,:,1], self.profiles.aerosols[:,:,:,0], self.profiles.aerosolType, \
-                        self.profiles.clouds[:,:,:,1], self.profiles.clouds[:,:,:,0], self.profiles.cloudType, self.profiles.cloudFraction, self.profiles.climatology, \
+                        self.profiles.climatology, \
                         self.profiles.surfaceTemperatures, self.profiles.surfaceFractions, self.profiles.LAI, self.profiles.S2m[:,1], self.profiles.windSpeed10m, self.profiles.windDirection10m,\
                         self.profiles.surfaceTypes[:,0], self.profiles.surfaceTypes[:,1], self.profiles.surfaceTypes[:,2], self.profiles.surfaceTypes[:,3], self.profiles.surfaceTypes[:,4], self.profiles.surfaceTypes[:,5], self.nThreads, self.surfEmisRefl )
         
@@ -200,13 +209,22 @@ class pyCRTM:
         self.setupGases() 
         self.surfEmisRefl = np.asfortranarray(self.surfEmisRefl) 
         #print(pycrtm.wrap_k_matrix.__doc__) 
+        if('aerosolType' in list(self.profiles._asdict().keys())): 
+            pycrtm.aerosoltype = self.profiles.aerosolType
+            pycrtm.aerosoleffectiveradius = self.profiles.aerosols[:,:,:,1]
+            pycrtm.aerosolconcentration = self.profiles.aerosols[:,:,:,0]
+        if('cloudType' in list(self.profiles._asdict().keys())):
+            pycrtm.cloudtype = self.profiles.cloudType
+            pycrtm.cloudeffectiveradius = self.profiles.clouds[:,:,:,1]
+            pycrtm.cloudconcentration = self.profiles.clouds[:,:,:,0]
+            pycrtm.cloudfraction =  self.profiles.cloudFraction
+
         self.Bt, self.TK, traceK, self.SkinK, self.SurfEmisK, self.ReflK,self.WindSpeedK, self.windDirectionK  =  pycrtm.wrap_k_matrix(  self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File,\
                         self.output_tb_flag, self.StoreTrans,\
-                         self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], \
+                        self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], \
                         self.profiles.Pi, self.profiles.P, self.profiles.T, \
                         self.traceConc, self.traceIds,\
-                        self.profiles.aerosols[:,:,:,1], self.profiles.aerosols[:,:,:,0], self.profiles.aerosolType, \
-                        self.profiles.clouds[:,:,:,1], self.profiles.clouds[:,:,:,0], self.profiles.cloudType, self.profiles.cloudFraction, self.profiles.climatology, \
+                        self.profiles.climatology, \
                         self.profiles.surfaceTemperatures, self.profiles.surfaceFractions, self.profiles.LAI, self.profiles.S2m[:,1], self.profiles.windSpeed10m, self.profiles.windDirection10m,\
                         self.profiles.surfaceTypes[:,0], self.profiles.surfaceTypes[:,1], self.profiles.surfaceTypes[:,2], self.profiles.surfaceTypes[:,3], self.profiles.surfaceTypes[:,4], self.profiles.surfaceTypes[:,5], self.nThreads, self.surfEmisRefl[:,:,:] )
         for i,ids in enumerate(list(self.traceIds)):

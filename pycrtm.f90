@@ -1,14 +1,24 @@
 module pycrtm 
 real(kind=8), allocatable :: outTransmission(:, :, :) ! outTransmission(N_profiles, nChan, N_Layers)
+
+real(kind=8), allocatable :: aerosolEffectiveRadius(:,:,:) !(N_Profiles,N_layers, N_aerosols)
+real(kind=8), allocatable :: aerosolConcentration(:,:,:)   !(N_profiles,N_layers, N_aerosols)
+integer, allocatable :: aerosolType(:,:)                   !(N_Profiles, N_aerosols)
+
+
+real(kind=8), allocatable :: cloudEffectiveRadius(:,:,:) !(N_Profiles,N_layers, N_clouds)
+real(kind=8), allocatable :: cloudConcentration(:,:,:)   !(N_profiles,N_layers, N_clouds)
+real(kind=8), allocatable :: cloudFraction(:,:)          !(N_profiles,N_layers)
+integer, allocatable :: cloudType(:,:)                   !(N_Profiles, N_clouds)
+
 contains
 subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwaterCoeff_File, & 
                         output_tb_flag, output_transmission_flag,  zenithAngle, scanAngle, azimuthAngle, solarAngle, &
                         year, month, day, & 
-                        nChan, N_Profiles, N_LAYERS, N_aerosols, N_clouds, N_trace, &
+                        nChan, N_Profiles, N_LAYERS, N_trace, &
                         pressureLevels, pressureLayers, temperatureLayers, & 
                         traceConcLayers, trace_IDs, & 
-                        aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
-                        cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology, & 
+                        climatology, & 
                         surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m, & 
                         landType, soilType, vegType, waterType, snowType, iceType, nthreads, &  
                         outTb, & 
@@ -30,7 +40,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   logical, intent(in) :: output_tb_flag, output_transmission_flag 
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
-  integer, intent(in) :: nChan, N_Profiles, N_Layers, N_aerosols, N_clouds, N_trace
+  integer, intent(in) :: nChan, N_Profiles, N_Layers, N_trace
   real(kind=8), intent(in) :: zenithAngle(n_profiles), scanAngle(n_profiles) 
   real(kind=8), intent(in) :: azimuthAngle(n_profiles), solarAngle(n_profiles,2)
   integer, intent(in) :: year(n_profiles), month(n_profiles), day(n_profiles) 
@@ -38,12 +48,6 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   real(kind=8), intent(in) :: pressureLayers(N_profiles, N_LAYERS), temperatureLayers(N_Profiles,N_Layers)
   real(kind=8), intent(in) :: traceConcLayers(N_Profiles,N_layers,N_trace)
   integer, intent(in) :: trace_IDs(N_trace)
-  real(kind=8), intent(in) :: aerosolEffectiveRadius(N_Profiles,N_layers, N_aerosols)
-  real(kind=8), intent(in) :: aerosolConcentration(N_profiles,N_layers, N_aerosols)
-  real(kind=8), intent(in) :: cloudEffectiveRadius(N_Profiles,N_layers, N_clouds)
-  real(kind=8), intent(in) :: cloudConcentration(N_profiles, N_LAYERS, N_clouds) 
-  real(kind=8), intent(in) :: cloudFraction(N_Profiles, N_layers)
-  integer, intent(in) :: aerosolType(N_Profiles, N_aerosols), cloudType(N_Profiles, N_clouds)
   integer, intent(in) :: climatology(N_profiles)
   real(kind=8), intent(in) :: surfaceTemperatures(N_Profiles,4), surfaceFractions(N_profiles, 4)
   real(kind=8), intent(in) :: LAI(N_Profiles), salinity(N_Profiles),  windSpeed10m(N_Profiles), windDirection10m(N_Profiles)
@@ -110,8 +114,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   ! allocate globals in the module based upon user selection through interface.
   call check_and_allocate_globals(output_transmission_flag, N_Profiles, nChan, N_layers)
   ! Figure out what needs allocating for Clouds and Aerosols. Are they on?
-  call aerosols_and_clouds_on(aerosolType, cloudType, N_clouds, N_aerosols, & 
-                              N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
+  call aerosols_and_clouds_on(N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
   
   err_stat = CRTM_Init( sensor_id,  chinfo, &
                         File_Path=coefficientPath, &
@@ -185,11 +188,9 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
     !     instructions in this program relatively "clean".
     ! ------------------------------------------------------------------------
     ! ...Profile data
-    call set_profile(atm, climatology(n), pressureLevels(n,:), pressureLayers(n,:), temperatureLayers(n,:),&
+    call set_profile(atm, n, climatology(n), pressureLevels(n,:), pressureLayers(n,:), temperatureLayers(n,:),&
                          traceConcLayers(n,:,:), trace_IDs(:), &
-                         aerosolType(n,:), aerosolEffectiveRadius(n,:,:), aerosolConcentration(n,:,:), & 
-                         cloudType(n,:), cloudEffectiveRadius(n,:,:), cloudConcentration(n,:,:), & 
-                         cloudFraction(n,:), N_trace, N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
+                         N_trace, N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
 
     ! 6b. Geometry input
     ! ------------------
@@ -290,11 +291,10 @@ end subroutine wrap_forward
 subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwaterCoeff_File, & 
                         output_tb_flag, output_transmission_flag, zenithAngle, scanAngle, azimuthAngle, solarAngle, &  
                         year, month, day, & 
-                        nChan, N_profiles, N_LAYERS, N_aerosols, N_clouds, N_trace, & 
+                        nChan, N_profiles, N_LAYERS, N_trace, & 
                         pressureLevels, pressureLayers, temperatureLayers, & 
                         traceConcLayers, trace_IDs, & 
-                        aerosolEffectiveRadius, aerosolConcentration, aerosolType, & 
-                        cloudEffectiveRadius, cloudConcentration, cloudType, cloudFraction, climatology, & 
+                        climatology, & 
                         surfaceTemperatures, surfaceFractions, LAI, salinity, windSpeed10m, windDirection10m, & 
                         landType, soilType, vegType, waterType, snowType, iceType, &  
                         nthreads, outTb, & 
@@ -324,7 +324,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   character(len=*), intent(in) :: IRwaterCoeff_File
   character(len=*), intent(in) :: MWwaterCoeff_File
   logical, intent(in) :: output_tb_flag, output_transmission_flag
-  integer, intent(in) :: nChan, N_profiles, N_Layers, N_aerosols, N_clouds, N_trace 
+  integer, intent(in) :: nChan, N_profiles, N_Layers, N_trace 
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
   real(kind=8), intent(in) :: zenithAngle(N_profiles), scanAngle(N_profiles)
@@ -334,11 +334,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   real(kind=8), intent(in) :: pressureLayers(N_profiles, N_layers), temperatureLayers(N_profiles, N_layers)
   real(kind=8), intent(in) :: traceConcLayers(N_profiles, N_layers, N_trace)
   integer, intent(in) :: trace_IDs(N_trace)
-  real(kind=8), intent(in) :: aerosolEffectiveRadius(N_profiles,N_layers, N_aerosols)
-  real(kind=8), intent(in) :: aerosolConcentration(N_profiles,N_layers, N_aerosols)
-  real(kind=8), intent(in) :: cloudEffectiveRadius(N_profiles,N_layers, N_clouds) 
-  real(kind=8), intent(in) :: cloudConcentration(N_profiles, N_layers, N_clouds), cloudFraction(N_profiles,N_layers)
-  integer, intent(in) :: aerosolType(N_profiles, N_aerosols), cloudType(N_profiles, N_clouds)
   integer, intent(in) ::  climatology(N_profiles)
   real(kind=8), intent(in) :: surfaceTemperatures(N_profiles,4), surfaceFractions(N_profiles,4), LAI(N_profiles) 
   real(kind=8), intent(in) :: salinity(N_profiles), windSpeed10m(N_profiles), windDirection10m(N_profiles)
@@ -414,8 +409,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   call check_and_allocate_globals(output_transmission_flag, N_Profiles, nChan, N_layers)
 
   ! figure out how to allocate aerosols/clouds and are the even turned on by the user?
-  call aerosols_and_clouds_on(aerosolType, cloudType, N_clouds, N_aerosols, & 
-                              N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
+  call aerosols_and_clouds_on( N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
 
   WRITE( *,'(/5x,"Initializing the CRTM...")' )
 
@@ -510,11 +504,9 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
     !     instructions in this program relatively "clean".
     ! ------------------------------------------------------------------------
     ! ...Profile data
-    call set_profile(atm, climatology(n), pressureLevels(n,:), pressureLayers(n,:), temperatureLayers(n,:),&
+    call set_profile(atm, n, climatology(n), pressureLevels(n,:), pressureLayers(n,:), temperatureLayers(n,:),&
                          traceConcLayers(n,:,:), trace_IDs(:), &
-                         aerosolType(n,:), aerosolEffectiveRadius(n,:,:), aerosolConcentration(n,:,:), & 
-                         cloudType(n,:), cloudEffectiveRadius(n,:,:), cloudConcentration(n,:,:), & 
-                         cloudFraction(n,:), N_trace, N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
+                         N_trace, N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
  
 
     ! 6b. Geometry input
@@ -679,27 +671,26 @@ end subroutine wrap_k_matrix
     END DO
   end subroutine applyAvg
 
-  subroutine aerosols_and_clouds_on(aerosolType, cloudType, N_clouds, N_aerosols, & 
-                                   N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
+  subroutine aerosols_and_clouds_on(N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
 
-  integer, intent(in) :: aerosolType(:,:), cloudType(:,:)
-  integer, intent(in) :: N_clouds, N_aerosols
   integer, intent(out) :: N_AEROSOLS_crtm, N_CLOUDS_crtm
   logical, intent(out) :: aerosolsOn, cloudsOn
-
-  if( all(aerosolType < 0) ) then
+  integer :: shp(2)
+  if( .not. allocated(aerosolType) ) then
     N_AEROSOLS_crtm = 0
     aerosolsOn = .False.
   else
-    N_AEROSOLS_crtm = N_aerosols
+    shp = shape(aerosolType)
+    N_AEROSOLS_crtm = shp(2)
     aerosolsOn = .True. 
   endif
 
-  if( all(cloudType < 0) ) then
+  if( .not. allocated(cloudType) ) then
     N_CLOUDS_crtm = 0
     cloudsOn = .False.
   else
-    N_CLOUDS_crtm = N_clouds
+    shp = shape(cloudType)
+    N_CLOUDS_crtm = shp(2)  
     cloudsOn = .True. 
   endif
  
@@ -744,18 +735,14 @@ end subroutine wrap_k_matrix
     END IF
   end subroutine check_logical_status
 
-  subroutine set_profile(atm, climatology, pressureLevels, pressureLayers, temperatureLayers,&
-                         traceConcLayers, trace_IDs, aerosolType, aerosolEffectiveRadius, aerosolConcentration, & 
-                         cloudType, cloudEffectiveRadius, cloudConcentration, cloudFraction, & 
+  subroutine set_profile(atm, n, climatology, pressureLevels, pressureLayers, temperatureLayers,&
+                         traceConcLayers, trace_IDs, & 
                          N_trace, N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
   USE CRTM_module
   TYPE(CRTM_Atmosphere_type), intent(inout) :: atm(:)
-  integer :: climatology
+  integer :: n,climatology
   real(kind=8) :: pressureLevels(:), pressureLayers(:), temperatureLayers(:), traceConcLayers(:,:)
-  integer :: trace_IDs(:), aerosolType(:)
-  real(kind=8) :: aerosolEffectiveRadius(:,:),aerosolConcentration(:,:)
-  integer :: cloudType(:)
-  real(kind=8) :: cloudEffectiveRadius(:,:), cloudConcentration(:,:), cloudFraction(:)
+  integer :: trace_IDs(:) 
   integer :: N_trace, N_aerosols_crtm, N_clouds_crtm
   logical :: aerosolsOn, cloudsOn
   integer :: i_abs,species  
@@ -777,18 +764,18 @@ end subroutine wrap_k_matrix
 
     if( aerosolsOn )  then
       do species = 1, N_aerosols_crtm
-        atm(1)%Aerosol(species)%Type                = aerosolType( species)
-        atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius(:, species)
-        atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(:, species)
+        atm(1)%Aerosol(species)%Type                = aerosolType(n, species)
+        atm(1)%Aerosol(species)%Effective_Radius(:) = aerosolEffectiveRadius(n, :, species)
+        atm(1)%Aerosol(species)%Concentration(:)    = aerosolConcentration(n, :, species)
       enddo
     endif
     if( cloudsOn ) then
       do species = 1, N_clouds_crtm
-        atm(1)%Cloud(species)%Type                = cloudType(species)
-        atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(:, species)
-        atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(:, species)
+        atm(1)%Cloud(species)%Type                = cloudType(n, species)
+        atm(1)%Cloud(species)%Effective_Radius(:) = cloudEffectiveRadius(n, :, species)
+        atm(1)%Cloud(species)%Water_Content(:)    = cloudConcentration(n, :, species)
       enddo
-      atm(1)%Cloud_Fraction(:)            = cloudFraction(:)
+      atm(1)%Cloud_Fraction(:)            = cloudFraction(n,:)
     endif
 
   end subroutine set_profile
