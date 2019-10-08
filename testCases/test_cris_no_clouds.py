@@ -13,7 +13,7 @@ def main(coefficientPath, sensor_id):
     cases = os.listdir( os.path.join(thisDir,'data') )
     cases.sort()
     # create 4 profiles for each of the 4 cases
-    profiles = profilesCreate( 4, 92 )
+    profiles = profilesCreate( 4, 92, nClouds = 0, nAerosols = 0 )
     storedTb = []
     storedEmis = []
     # populate the cases, and previously calculated Tb from crtm test program.    
@@ -32,13 +32,6 @@ def main(coefficientPath, sensor_id):
         profiles.T[i,:] = np.asarray(h5['temperatureLayers'])
         profiles.Q[i,:] = np.asarray(h5['humidityLayers'])
         profiles.O3[i,:] = np.asarray(h5['ozoneConcLayers'])
-        profiles.clouds[i,:,0,0] = np.asarray(h5['cloudConcentration'])
-        profiles.clouds[i,:,0,1] = np.asarray(h5['cloudEffectiveRadius'])
-        profiles.aerosols[i,:,0,0] = np.asarray(h5['aerosolConcentration'])
-        profiles.aerosols[i,:,0,1] = np.asarray(h5['aerosolEffectiveRadius'])
-        profiles.aerosolType[i] = -1 #h5['aerosolType'][()]
-        profiles.cloudType[i] = -1  #h5['cloudType'][()]
-        profiles.cloudFraction[i,:] = h5['cloudFraction'][()]
         profiles.climatology[i] = h5['climatology'][()]
         profiles.surfaceFractions[i,:] = h5['surfaceFractions']
         profiles.surfaceTemperatures[i,:] = h5['surfaceTemperatures']
