@@ -739,7 +739,7 @@ end subroutine wrap_k_matrix
         Options(1)%Use_Direct_Reflectivity = .false.
     else
         Options(1)%Use_Direct_Reflectivity = .true.  ! 1: User-supplied
-        Options(1)%Direct_Reflectivity(:) = emissivityReflectivity(1,n,:) 
+        Options(1)%Direct_Reflectivity(:) = emissivityReflectivity(2,n,:) 
     endif
   end subroutine set_emissivity
 
