@@ -30,7 +30,7 @@ def main( a ):
         os.chdir( glob.glob('REL-*')[0] ) 
 
         print("Patching CRTM for gfortran and openmp compatibility in k-matrix.") 
-        if(arch=='gfortran-openmp'): patchCrtm(fo, fe, scriptDir)
+        patchCrtm(fo, fe, scriptDir, arch)
 
 
         print("Configuring/Compiling/Installing CRTM.")
@@ -159,11 +159,12 @@ def runAndCheckProcess(p, name, fo, fe, scriptDir):
         fo.close()
         fe.close()
         sys.exit(name+" failed.")
-def patchCrtm(fo, fe, scriptDir):
+def patchCrtm(fo, fe, scriptDir, arch):
     # patch to fix gfortran incompatibility make some objects in/out
-    p = Popen(['patch','-p0','-i',os.path.join(scriptDir,'gfortran.patch')],stderr=fe,stdout=fo)
-    p.wait()
-    runAndCheckProcess(p,"Patching CRTM for gcc compatibility", fo, fe, scriptDir)
+    if ( arch == 'gfortran-openmp' ):
+        p = Popen(['patch','-p0','-i',os.path.join(scriptDir,'gfortran.patch')],stderr=fe,stdout=fo)
+        p.wait()
+        runAndCheckProcess(p,"Patching CRTM for gcc compatibility", fo, fe, scriptDir)
 
     p = Popen(['patch','-p0','-i',os.path.join(scriptDir,'layerAvg.patch')],stderr=fe,stdout=fo)
     p.wait()
