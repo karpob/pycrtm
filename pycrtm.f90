@@ -818,6 +818,7 @@ end subroutine wrap_k_matrix
     real(kind=8), DIMENSION(size(x)) :: xout
     integer :: n,j
     n = size(x)
+    xout(1) = x(1)
     do j=2,n
         xout(j) = xout(j-1) + x(j)
     end do
