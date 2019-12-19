@@ -11,9 +11,11 @@ real(kind=8), allocatable :: cloudConcentration(:,:,:)   !(N_profiles,N_layers, 
 real(kind=8), allocatable :: cloudFraction(:,:)          !(N_profiles,N_layers)
 integer, allocatable :: cloudType(:,:)                   !(N_Profiles, N_clouds)
 
+real(kind=8), allocatable :: emissivityReflectivity(:,:,:) ! 2,N_profiles, nChan
 contains
 subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwaterCoeff_File, & 
                         output_tb_flag, output_transmission_flag,  zenithAngle, scanAngle, azimuthAngle, solarAngle, &
+                        output_emissivity_flag, use_passed_emissivity, & 
                         year, month, day, & 
                         nChan, N_Profiles, N_LAYERS, N_trace, &
                         pressureLevels, pressureLayers, temperatureLayers, & 
@@ -21,8 +23,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
                         climatology, & 
                         surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m, & 
                         landType, soilType, vegType, waterType, snowType, iceType, nthreads, &  
-                        outTb, & 
-                        emissivityReflectivity )      
+                        outTb )      
 
   ! ============================================================================
   ! STEP 1. **** ENVIRONMENT SETUP FOR CRTM USAGE ****
@@ -37,7 +38,8 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   character(len=*), intent(in) :: sensor_id_in
   character(len=*), intent(in) :: IRwaterCoeff_File
   character(len=*), intent(in) :: MWwaterCoeff_File
-  logical, intent(in) :: output_tb_flag, output_transmission_flag 
+  logical, intent(in) :: output_tb_flag, output_transmission_flag, output_emissivity_flag 
+  logical, intent(in) :: use_passed_emissivity
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
   integer, intent(in) :: nChan, N_Profiles, N_Layers, N_trace
@@ -55,7 +57,6 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   integer, intent(in) ::  snowType(N_Profiles), iceType(N_Profiles) 
   integer, intent(in) :: nthreads
   real(kind=8), intent(out) :: outTb(N_Profiles,nChan) 
-  real(kind=8), intent(inout) :: emissivityReflectivity(2,N_Profiles,nChan)
   character(len=256), dimension(1) :: sensor_id
   ! --------------------------
   ! Some non-CRTM-y Parameters
@@ -106,6 +107,11 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
     'Running simulation.', &
     'CRTM Version: '//TRIM(Version) )
 
+  if (.not. allocated(emissivityReflectivity)) then 
+    if ( output_emissivity_flag ) then 
+      allocate( emissivityReflectivity(2,N_profiles, nChan) )
+    endif
+  endif
   ! ============================================================================
   ! STEP 4. **** INITIALIZE THE CRTM ****
   !
@@ -142,6 +148,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   !     for the current sensor
   ! ------------------------------------
   n_channels = CRTM_ChannelInfo_n_Channels(chinfo(1))
+
   
   ! 5b. Allocate the ARRAYS
   ! -----------------------
@@ -151,6 +158,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   !$omp parallel do default(private) shared(chinfo,emissivityReflectivity,outTb,outTransmission)& 
   !$omp& shared(zenithAngle, scanAngle, azimuthAngle, solarAngle, output_tb_flag)&
   !$omp& shared(nChan, N_Profiles, N_LAYERS, N_Clouds_crtm, N_aerosols_crtm, N_trace)&
+  !$omp& shared(use_passed_emissivity, output_emissivity_flag)&
   !$omp& shared(pressureLevels, pressureLayers, temperatureLayers)& 
   !$omp& shared(traceConcLayers,trace_IDs, output_transmission_flag)& 
   !$omp& shared(aerosolEffectiveRadius, aerosolConcentration, aerosolType, cloudsOn, aerosolsOn)& 
@@ -223,7 +231,7 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
 
     call crtm_options_create( options, nChan )
     call check_logical_status( any(.not. crtm_options_associated( options ) ),'options failed to create.' )
-    call set_emissivity(options, emissivityReflectivity(1,n,:), emissivityReflectivity(2,n,:))
+    call set_emissivity(options, n, use_passed_emissivity)
 
     err_stat = CRTM_Forward( atm        , &  ! Input
                              sfc        , &  ! Input
@@ -247,8 +255,11 @@ subroutine wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
              dexp(-1.0*cumsum( rts(l,1)%Layer_Optical_Depth ) )
         enddo
     endif
-    emissivityReflectivity(1,n,:) = rts(:,1)%Surface_Emissivity 
-    emissivityReflectivity(2,n,:) = rts(:,1)%Surface_Reflectivity
+
+    if( output_emissivity_flag ) then 
+        emissivityReflectivity(1,n,:) = rts(:,1)%Surface_Emissivity 
+        emissivityReflectivity(2,n,:) = rts(:,1)%Surface_Reflectivity
+    endif 
 
     if (output_tb_flag) then 
         outTb(n,:) = rts(:,1)%Brightness_Temperature
@@ -291,6 +302,7 @@ end subroutine wrap_forward
 
 subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwaterCoeff_File, & 
                         output_tb_flag, output_transmission_flag, zenithAngle, scanAngle, azimuthAngle, solarAngle, &  
+                        output_emissivity_flag, use_passed_emissivity, & 
                         year, month, day, & 
                         nChan, N_profiles, N_LAYERS, N_trace, & 
                         pressureLevels, pressureLayers, temperatureLayers, & 
@@ -300,7 +312,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
                         landType, soilType, vegType, waterType, snowType, iceType, &  
                         nthreads, outTb, & 
                         temperatureJacobian, traceJacobian, skinK, emisK, reflK, &
-                        windSpeedK, windDirectionK,  emissivityReflectivity )      
+                        windSpeedK, windDirectionK )      
 
   ! ============================================================================
   ! STEP 1. **** ENVIRONMENT SETUP FOR CRTM USAGE ****
@@ -324,7 +336,8 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   character(len=*), intent(in) :: sensor_id_in
   character(len=*), intent(in) :: IRwaterCoeff_File
   character(len=*), intent(in) :: MWwaterCoeff_File
-  logical, intent(in) :: output_tb_flag, output_transmission_flag
+  logical, intent(in) :: output_tb_flag, output_transmission_flag, output_emissivity_flag
+  logical, intent(in) :: use_passed_emissivity 
   integer, intent(in) :: nChan, N_profiles, N_Layers, N_trace 
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
@@ -341,7 +354,6 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   integer, intent(in) :: landType(N_profiles), soilType(N_profiles), vegType(N_profiles), waterType(N_profiles) 
   integer, intent(in) :: snowType(N_profiles), iceType(N_profiles) 
   real(kind=8), intent(out) :: outTb(N_profiles,nChan)
-  real(kind=8), intent(inout):: emissivityReflectivity(2,N_profiles,nChan)
   real(kind=8), intent(out) :: skinK(N_profiles,nChan,4), emisK(N_profiles,nChan), reflK(N_profiles,nChan)
   real(kind=8), intent(out) :: windSpeedK(N_profiles,nChan), windDirectionK(N_profiles,nChan)
   real(kind=8), intent(out) :: temperatureJacobian(N_profiles, nChan, N_LAYERS)
@@ -399,7 +411,12 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
     'Running simulation.', &
     'CRTM Version: '//TRIM(Version) )
 
-
+  if (.not. allocated(emissivityReflectivity)) then 
+    if ( output_emissivity_flag ) then 
+      allocate( emissivityReflectivity( 2,N_profiles, nChan ) )
+    endif
+  endif
+ 
 
   ! ============================================================================
   ! STEP 4. **** INITIALIZE THE CRTM ****
@@ -435,6 +452,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   !$omp parallel do default(private) shared(emissivityReflectivity,outTb)&
   !$omp& shared(temperatureJacobian, output_tb_flag, output_transmission_flag)& 
   !$omp& shared(traceJacobian,outTransmission)&
+  !$omp& shared(use_passed_emissivity, output_emissivity_flag)&
   !$omp& shared(nChan, N_Layers,N_CLOUDS_crtm, N_AEROSOLS_crtm, N_trace)&
   !$omp& shared(pressureLevels, pressureLayers, temperatureLayers)& 
   !$omp& shared(traceConcLayers, trace_IDs, cloudsOn, aerosolsOn, zenithAngle,scanAngle,azimuthAngle,solarAngle)& 
@@ -558,7 +576,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
     ! ----------------------
     call crtm_options_create( options, nChan )
     call check_logical_status( any(.not. crtm_options_associated( options ) ),'options failed to create' )
-    call set_emissivity(options, emissivityReflectivity(1,n,:), emissivityReflectivity(2,n,:))
+    call set_emissivity(options, n,  use_passed_emissivity)
 
     err_stat = CRTM_K_Matrix( atm        , &  ! FORWARD  Input
                               sfc        , &  ! FORWARD  Input
@@ -600,13 +618,18 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
              dexp(-1.0* cumsum( rts(l,1)%Layer_Optical_Depth ) ) 
         endif
     enddo
+
     if (output_tb_flag) then 
         outTb(n,:) = rts(:,1)%Brightness_Temperature
     else
         outTb(n,:) = rts(:,1)%Radiance
-    endif 
-    emissivityReflectivity(1,n,:) = rts(:,1)%Surface_Emissivity
-    emissivityReflectivity(2,n,:) = rts(:,1)%Surface_Reflectivity
+    endif
+
+    if (output_emissivity_flag) then  
+        emissivityReflectivity(1,n,:) = rts(:,1)%Surface_Emissivity
+        emissivityReflectivity(2,n,:) = rts(:,1)%Surface_Reflectivity
+    endif
+
     CALL CRTM_Atmosphere_Destroy(atm)
     CALL CRTM_Atmosphere_Destroy(atm_k)
     call crtm_options_destroy(options)
@@ -698,24 +721,25 @@ end subroutine wrap_k_matrix
  
   end subroutine aerosols_and_clouds_on
 
-  subroutine set_emissivity(options, emiss, refl)
+  subroutine set_emissivity(options, n, use_passed_emissivity )
     use crtm_module
     implicit none
     type(crtm_options_type), intent(inout) :: options(1)
-    real(kind=8) :: emiss(:), refl(:)
+    integer :: n
+    logical:: use_passed_emissivity
 
-    if ( all( emiss < -0.9999 ) ) then
+    if ( .not. use_passed_emissivity ) then
         Options(1)%Use_Emissivity = .false.   ! compute it
     else
         Options(1)%Use_Emissivity = .true.    ! user supplied
-        Options(1)%Emissivity(:)=emiss(:)
+        Options(1)%Emissivity(:) = emissivityReflectivity(1,n,:)
     endif 
 
-    if ( all( refl < -0.9999) ) then
+    if ( .not. use_passed_emissivity ) then
         Options(1)%Use_Direct_Reflectivity = .false.
     else
         Options(1)%Use_Direct_Reflectivity = .true.  ! 1: User-supplied
-        Options(1)%Direct_Reflectivity(:)=refl(:) 
+        Options(1)%Direct_Reflectivity(:) = emissivityReflectivity(2,n,:) 
     endif
   end subroutine set_emissivity
 

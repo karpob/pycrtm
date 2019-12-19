@@ -132,6 +132,7 @@ class pyCRTM:
         self.nChan = 0
         self.output_tb_flag = True
         self.StoreTrans = True
+        self.StoreEmis = True
         self.nThreads = 1
         self.MWwaterCoeff_File = 'FASTEM6.MWwater.EmisCoeff.bin'
         self.IRwaterCoeff_File = 'Nalli.IRwater.EmisCoeff.bin'
@@ -176,12 +177,12 @@ class pyCRTM:
             self.traceConc[:,:,i] = self.profiles._asdict()[g][:,:]
             self.traceIds[i] = gases[g]    
     def runDirect(self):
-        if(type(self.surfEmisRefl) == list):
-            if(len(self.surfEmisRefl)==0):
-                self.surfEmisRefl = -1.0*np.ones([2,self.profiles.Angles.shape[0],self.nChan])
+        if(not len(self.surfEmisRefl)==0):
+            pycrtm.emissivityreflectivity =  np.asfortranarray(self.surfEmisRefl)
+            use_passed = True
+        else: use_passed = False    
         #print(pycrtm.wrap_forward.__doc__)
         self.setupGases() 
-        self.surfEmisRefl = np.asfortranarray(self.surfEmisRefl)
         if('aerosolType' in list(self.profiles._asdict().keys())): 
             pycrtm.aerosoltype = self.profiles.aerosolType
             pycrtm.aerosoleffectiveradius = self.profiles.aerosols[:,:,:,1]
@@ -192,22 +193,53 @@ class pyCRTM:
             pycrtm.cloudconcentration = self.profiles.clouds[:,:,:,0]
             pycrtm.cloudfraction =  self.profiles.cloudFraction
 
-        self.Bt = pycrtm.wrap_forward( self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File, self.output_tb_flag,self.StoreTrans,\
-                        self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], \
-                        self.profiles.Pi, self.profiles.P, self.profiles.T, self.traceConc,self.traceIds,\
-                        self.profiles.climatology, \
-                        self.profiles.surfaceTemperatures, self.profiles.surfaceFractions, self.profiles.LAI, self.profiles.S2m[:,1], self.profiles.windSpeed10m, self.profiles.windDirection10m,\
-                        self.profiles.surfaceTypes[:,0], self.profiles.surfaceTypes[:,1], self.profiles.surfaceTypes[:,2], self.profiles.surfaceTypes[:,3], self.profiles.surfaceTypes[:,4], self.profiles.surfaceTypes[:,5], self.nThreads, self.surfEmisRefl )
+        self.Bt = pycrtm.wrap_forward( self.coefficientPath, 
+                                       self.sensor_id, 
+                                       self.IRwaterCoeff_File,
+                                       self.MWwaterCoeff_File, 
+                                       self.output_tb_flag,
+                                       self.StoreTrans,
+                                       self.profiles.Angles[:,0], 
+                                       self.profiles.Angles[:,4], 
+                                       self.profiles.Angles[:,1], 
+                                       self.profiles.Angles[:,2:4], 
+                                       self.StoreEmis,
+                                       use_passed,
+                                       self.profiles.DateTimes[:,0],
+                                       self.profiles.DateTimes[:,1],
+                                       self.profiles.DateTimes[:,2],
+                                       self.nChan,
+                                       self.profiles.Pi, 
+                                       self.profiles.P, 
+                                       self.profiles.T,
+                                       self.traceConc,
+                                       self.traceIds,
+                                       self.profiles.climatology,
+                                       self.profiles.surfaceTemperatures, 
+                                       self.profiles.surfaceFractions, 
+                                       self.profiles.LAI, 
+                                       self.profiles.S2m[:,1], 
+                                       self.profiles.windSpeed10m, 
+                                       self.profiles.windDirection10m,
+                                       self.profiles.surfaceTypes[:,0], 
+                                       self.profiles.surfaceTypes[:,1], 
+                                       self.profiles.surfaceTypes[:,2], 
+                                       self.profiles.surfaceTypes[:,3], 
+                                       self.profiles.surfaceTypes[:,4], 
+                                       self.profiles.surfaceTypes[:,5], 
+                                       self.nThreads )
         
         if(self.StoreTrans):
             self.TauLevels = pycrtm.outtransmission
+        if(self.StoreEmis):
+            self.surfEmisRefl = pycrtm.emissivityreflectivity
     def runK(self):
-        if(type(self.surfEmisRefl) == list):
-            if(len(self.surfEmisRefl)==0):
-                self.surfEmisRefl = -1.0*np.ones([2,self.profiles.Angles.shape[0],self.nChan])
- 
+        if(not len(self.surfEmisRefl)==0):
+            pycrtm.emissivityreflectivity = np.asfortranarray(self.surfEmisRefl)
+            use_passed=True
+        else: use_passed=False                  
         self.setupGases() 
-        self.surfEmisRefl = np.asfortranarray(self.surfEmisRefl) 
+       
         #print(pycrtm.wrap_k_matrix.__doc__) 
         if('aerosolType' in list(self.profiles._asdict().keys())): 
             pycrtm.aerosoltype = self.profiles.aerosolType
@@ -219,14 +251,41 @@ class pyCRTM:
             pycrtm.cloudconcentration = self.profiles.clouds[:,:,:,0]
             pycrtm.cloudfraction =  self.profiles.cloudFraction
 
-        self.Bt, self.TK, traceK, self.SkinK, self.SurfEmisK, self.ReflK,self.WindSpeedK, self.windDirectionK  =  pycrtm.wrap_k_matrix(  self.coefficientPath, self.sensor_id, self.IRwaterCoeff_File, self.MWwaterCoeff_File,\
-                        self.output_tb_flag, self.StoreTrans,\
-                        self.profiles.Angles[:,0], self.profiles.Angles[:,4], self.profiles.Angles[:,1], self.profiles.Angles[:,2:4], self.profiles.DateTimes[:,0], self.profiles.DateTimes[:,1],self.profiles.DateTimes[:,2], \
-                        self.profiles.Pi, self.profiles.P, self.profiles.T, \
-                        self.traceConc, self.traceIds,\
-                        self.profiles.climatology, \
-                        self.profiles.surfaceTemperatures, self.profiles.surfaceFractions, self.profiles.LAI, self.profiles.S2m[:,1], self.profiles.windSpeed10m, self.profiles.windDirection10m,\
-                        self.profiles.surfaceTypes[:,0], self.profiles.surfaceTypes[:,1], self.profiles.surfaceTypes[:,2], self.profiles.surfaceTypes[:,3], self.profiles.surfaceTypes[:,4], self.profiles.surfaceTypes[:,5], self.nThreads, self.surfEmisRefl[:,:,:] )
+        self.Bt, self.TK, traceK, self.SkinK, self.SurfEmisK, self.ReflK,self.WindSpeedK, self.windDirectionK  =  pycrtm.wrap_k_matrix(  self.coefficientPath,
+                                                                                                                                         self.sensor_id, 
+                                                                                                                                         self.IRwaterCoeff_File,
+                                                                                                                                         self.MWwaterCoeff_File,
+                                                                                                                                         self.output_tb_flag,
+                                                                                                                                         self.StoreTrans,
+                                                                                                                                         self.profiles.Angles[:,0], 
+                                                                                                                                         self.profiles.Angles[:,4], 
+                                                                                                                                         self.profiles.Angles[:,1], 
+                                                                                                                                         self.profiles.Angles[:,2:4], 
+                                                                                                                                         self.StoreEmis,  
+                                                                                                                                         use_passed, 
+                                                                                                                                         self.profiles.DateTimes[:,0], 
+                                                                                                                                         self.profiles.DateTimes[:,1],
+                                                                                                                                         self.profiles.DateTimes[:,2],
+                                                                                                                                         self.nChan, 
+                                                                                                                                         self.profiles.Pi, 
+                                                                                                                                         self.profiles.P, 
+                                                                                                                                         self.profiles.T, 
+                                                                                                                                         self.traceConc, 
+                                                                                                                                         self.traceIds,
+                                                                                                                                         self.profiles.climatology,
+                                                                                                                                         self.profiles.surfaceTemperatures, 
+                                                                                                                                         self.profiles.surfaceFractions, 
+                                                                                                                                         self.profiles.LAI, 
+                                                                                                                                         self.profiles.S2m[:,1], 
+                                                                                                                                         self.profiles.windSpeed10m, 
+                                                                                                                                         self.profiles.windDirection10m,
+                                                                                                                                         self.profiles.surfaceTypes[:,0], 
+                                                                                                                                         self.profiles.surfaceTypes[:,1], 
+                                                                                                                                         self.profiles.surfaceTypes[:,2], 
+                                                                                                                                         self.profiles.surfaceTypes[:,3], 
+                                                                                                                                         self.profiles.surfaceTypes[:,4], 
+                                                                                                                                         self.profiles.surfaceTypes[:,5], 
+                                                                                                                                         self.nThreads )
         for i,ids in enumerate(list(self.traceIds)):
             # I think I can do something smarter here in python to contruct self.QK etc through an execute, or something along those lines?
             if(ids == gases['Q']):   self.QK   = traceK[:,:,:,i]
@@ -244,6 +303,8 @@ class pyCRTM:
         if(self.StoreTrans):
             self.TauLevels = pycrtm.outtransmission
 
+        if(self.StoreEmis):
+            self.surfEmisRefl = pycrtm.emissivityreflectivity
 if __name__ == "__main__":
     thisDir = os.path.dirname(os.path.abspath(__file__))
     cases = os.listdir( os.path.join(thisDir,'testCases','data') )
