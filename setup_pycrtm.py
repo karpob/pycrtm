@@ -119,7 +119,7 @@ def selectCompilerFlags(arch):
 
         if(fullIfortPath == ''): sys.exit("No ifort found.")
 
-        compilerFlags['ifort-openmp']['FCFLAGS1']="-openmp -fPIC -liomp5 -O3 -fp-model source -e08 -free -assume byterecl,realloc_lhs"
+        compilerFlags['ifort-openmp']['FCFLAGS1']="-qopenmp -fPIC -liomp5 -O3 -fp-model source -e08 -free -assume byterecl,realloc_lhs"
         compilerFlags['ifort-openmp']['FCFLAGS2']=" -liomp5 "
         compilerFlags['ifort-openmp']['LDFLAGS']="-Wall -g -shared -liomp5"
         compilerFlags['ifort-openmp']['F2PY_COMPILER']='intelem'

@@ -461,7 +461,7 @@ subroutine wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   !$omp& shared(surfaceTemperatures, surfaceFractions, LAI, salinity,  windSpeed10m, windDirection10m)& 
   !$omp& shared(skinK, emisK, reflK, windSpeedK, windDirectionK)& 
   !$omp& shared(landType, soilType, vegType, waterType, snowType, iceType)&
-  !$omp& shared(sensor_id,coefficientPath, chinfo, year, month, day)&
+  !$omp& shared(sensor_id,coefficientPath, chinfo, year, month, day, N_profiles)&
  
   !$omp& num_threads(nthreads) 
   Profile_Loop: DO n = 1, N_profiles
