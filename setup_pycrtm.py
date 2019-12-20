@@ -310,7 +310,7 @@ if __name__ == "__main__":
     parser.add_argument('--install',help = 'install path.', required = True, dest='install')
     parser.add_argument('--rtpath',help = 'path to RT tarballs.', required = True, dest='rtpath')
     parser.add_argument('--jproc',help = 'Number of threads to pass to make.', required = True, dest='jproc')
-    parser.add_argument('--arch',help = 'compiler/architecture.', required = False, dest='arch', default='ifort-openmp')
+    parser.add_argument('--arch',help = 'compiler/architecture.', required = False, dest='arch', default='gfortran-openmp')
     parser.add_argument('--inplace', help="Switch installer to use rtpath for previously installed crtm.", dest='rtinstall', action='store_false' )
     a = parser.parse_args()
     main(a)
