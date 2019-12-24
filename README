@@ -31,7 +31,7 @@ Required:
 --jproc   -  The number of threads to pass compiler
 
 Optional:
---arch select compiler/environment gfortran has only been tested thus far, but in theory intel could be used here
+--arch select compiler/environment gfortran (gcc) and ifort (intel) have been tested.
 --inplace this will skip the building of CRTM, but instead just compile pycrtm interface and link to CRTM library specified in RTPATH
 
 In addition to installing CRTM this script will patch the source fix some in in/out structures that cause gfortran to fail (gfortran.patch), and will re-organize
