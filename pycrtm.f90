@@ -686,10 +686,10 @@ END SUBROUTINE wrap_k_matrix
     INTEGER      :: k, interp_index(2,Nref)
     REAL(KIND=8) :: Acc_Weighting(Nuser,Nref)
 
-    CALL LayerAvg( Ref_LnPressure   , &
-                   User_LnPressure  , &
-                   Acc_Weighting    , &
-                   interp_index)
+    !CALL LayerAvg( Ref_LnPressure   , &
+    !               User_LnPressure  , &
+    !               Acc_Weighting    , &
+    !               interp_index)
 
 
 
