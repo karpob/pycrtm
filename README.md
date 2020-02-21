@@ -18,7 +18,7 @@ This `README` has 4 parts:
 - Bryan Karpowicz -- August 16, 2019
 ---------------------------------------------------------------------------------------- 
 
-##1. Installation:
+## 1. Installation:
  
 Done via the `setup_pycrtm.py` script  
 
