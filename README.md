@@ -26,7 +26,7 @@ Usage:
 ```
 setup_pycrtm.py [-h] --install INSTALL --rtpath RTPATH --jproc JPROC [--arch ARCH] [--inplace]
 
-`setup_pycrtm.py: error: the following arguments are required: --install, --rtpath, --jproc` 
+setup_pycrtm.py: error: the following arguments are required: --install, --rtpath, --jproc 
 ```
 
 ### Required:
@@ -36,14 +36,14 @@ setup_pycrtm.py [-h] --install INSTALL --rtpath RTPATH --jproc JPROC [--arch ARC
 
 ### Optional:
 * `--arch` select compiler/environment gfortran (gcc) and ifort (intel) have been tested.
-* `--inplace` this will skip the building of CRTM, but instead just compile pycrtm interface and link to CRTM library specified in RTPATH
+* `--inplace` this will skip the building of CRTM, but instead just compile pycrtm interface and link to CRTM library specified in `RTPATH`.
 
 In addition to installing CRTM this script will patch the source fix some in in/out structures that cause gfortran to fail (gfortran.patch), and will re-organize
 some null pointers to make the k-matrix thread safe for OpenMP (kmatrix.patch).  
 
 Example to install CRTM in this directory under a subdirectory `lib/`:
 ```
-`./setup_pycrtm.py  --install $PWD/lib/ --rtpath $PWD/lib/ --jproc 1` 
+./setup_pycrtm.py  --install $PWD/lib/ --rtpath $PWD/lib/ --jproc 1
 ```
 Once completed:
 
@@ -81,7 +81,7 @@ Right now w/ CRTM v2.3.0 there are differences between cases with zero cloud fra
 
 Right now things aren't setup to install into a user's Python path. What I typically plan on doing is set this as a git submodule, and bring it into a project and import the module using something like:
 ```Python
-`from pycrtm.pyCRTM import profilesCreate, pyCRTM`
+from pycrtm.pyCRTM import profilesCreate, pyCRTM
 ```
 Or, do something like is done in the testCases scripts and insert the path, then import.
 ```Python
