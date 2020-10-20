@@ -1,8 +1,8 @@
-#!/usr/bin/env python3
+#!/usr/bin/python3
 import os,shutil,glob,sys,argparse
-import urllib.request
 import tarfile
 from subprocess import Popen, PIPE
+
 
 def main( a ):
     
@@ -29,7 +29,7 @@ def main( a ):
         # go into extracted tarball source directory
         os.chdir( glob.glob('REL-*')[0] ) 
 
-        print("Patching CRTM for gfortran and openmp compatibility in k-matrix.") 
+        print("Patching CRTM for gfortran and openmp compatibility in k-matrix.")
         patchCrtm(fo, fe, scriptDir, arch)
 
 
@@ -95,7 +95,7 @@ def selectCompilerFlags(arch):
         compilerFlags['gfortran-openmp']={}
         compilerFlags['gfortran-openmp']['Compiler']='gfortran'
         fullGfortranPath = which('gfortran')
-        if(fullGfortranPath ==''): sys.exit("No gfotran found in path.")
+        if(fullGfortranPath ==''): sys.exit("No gfortran found in path.")
 
         gccBinPath = os.path.split(fullGfortranPath)[0]
         gccPath = os.path.split(gccBinPath)[0]
@@ -128,12 +128,20 @@ def selectCompilerFlags(arch):
     return compilerFlags
        
 def downloadExtractTar( tarballPath, scriptDir ):
+    import urllib.request
+    import ssl
+    from contextlib import closing
+    import tarfile
+    context = ssl._create_unverified_context()  # Fix for ssl.SSLCertVerificationError on macOS Catalina
     if not os.path.exists(tarballPath):
         os.makedirs(tarballPath)
     os.chdir(tarballPath)
     if(len(glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz')))==0):
         print("Downloading CRTM Tarball {}.\nThis will likely take a while, because ftp.emc.ncep.noaa.gov is quite slow.".format ('http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz'))
-        urllib.request.urlretrieve("http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz", "crtm_v2.3.0.tar.gz") 
+        # Using the requests library with Python3 to download the CRTM tarball from the EMC ftp site:
+        with closing(urllib.request.urlopen('http://ftp.emc.ncep.noaa.gov/jcsda/CRTM/REL-2.3.0/crtm_v2.3.0.tar.gz',context=context)) as r:
+            with open('crtm_v2.3.0.tar.gz', 'wb') as f:
+                shutil.copyfileobj(r, f)
     print('tarballPath',tarballPath)
     print("Untarring CRTM Tarball {}".format (glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz'))[0]))
     t = tarfile.open( glob.glob(os.path.join(tarballPath,'crtm_*.tar.gz'))[0]  )
@@ -305,6 +313,9 @@ def which(name):
             found = 1
             return full_path
     return ''
+    
+    
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser( description = 'install crtm and pycrtm')
     parser.add_argument('--install',help = 'install path.', required = True, dest='install')
