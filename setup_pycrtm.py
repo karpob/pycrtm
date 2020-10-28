@@ -174,9 +174,9 @@ def patchCrtm(fo, fe, scriptDir, arch):
         p.wait()
         runAndCheckProcess(p,"Patching CRTM for gcc compatibility", fo, fe, scriptDir)
 
-    p = Popen(['patch','-p0','-i',os.path.join(scriptDir,'layerAvg.patch')],stderr=fe,stdout=fo)
-    p.wait()
-    runAndCheckProcess(p,"Patching CRTM for gcc compatibility", fo, fe, scriptDir)
+    #p = Popen(['patch','-p0','-i',os.path.join(scriptDir,'layerAvg.patch')],stderr=fe,stdout=fo)
+    #p.wait()
+    #runAndCheckProcess(p,"Patching CRTM for gcc compatibility", fo, fe, scriptDir)
 
     p = Popen(['patch','-p0','-i',os.path.join(scriptDir,'kmatrix.patch')],stderr=fe,stdout=fo)
     p.wait()

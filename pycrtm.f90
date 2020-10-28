@@ -4,13 +4,13 @@ REAL(KIND=8), ALLOCATABLE :: outTransmission(:, :, :) ! outTransmission(N_profil
 
 REAL(KIND=8), ALLOCATABLE :: aerosolEffectiveRadius(:,:,:) !(N_Profiles,N_layers, N_aerosols)
 REAL(KIND=8), ALLOCATABLE :: aerosolConcentration(:,:,:)   !(N_profiles,N_layers, N_aerosols)
-INTEGER, 	  ALLOCATABLE :: aerosolType(:,:)                   !(N_Profiles, N_aerosols)
+INTEGER,      ALLOCATABLE :: aerosolType(:,:)                   !(N_Profiles, N_aerosols)
 
 
 REAL(KIND=8), ALLOCATABLE :: cloudEffectiveRadius(:,:,:) !(N_Profiles,N_layers, N_clouds)
 REAL(KIND=8), ALLOCATABLE :: cloudConcentration(:,:,:)   !(N_profiles,N_layers, N_clouds)
 REAL(KIND=8), ALLOCATABLE :: cloudFraction(:,:)          !(N_profiles,N_layers)
-INTEGER, 	  ALLOCATABLE :: cloudType(:,:)                   !(N_Profiles, N_clouds)
+INTEGER,      ALLOCATABLE :: cloudType(:,:)                   !(N_Profiles, N_clouds)
 
 REAL(KIND=8), ALLOCATABLE :: emissivityReflectivity(:,:,:) ! 2,N_profiles, nChan
 
@@ -41,24 +41,24 @@ SUBROUTINE wrap_forward( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwat
   CHARACTER(len=*), INTENT(IN) :: sensor_id_in
   CHARACTER(len=*), INTENT(IN) :: IRwaterCoeff_File
   CHARACTER(len=*), INTENT(IN) :: MWwaterCoeff_File
-  LOGICAL, 			INTENT(IN) :: output_tb_flag, output_transmission_flag, output_emissivity_flag 
-  LOGICAL, 			INTENT(IN) :: use_passed_emissivity
+  LOGICAL,          INTENT(IN) :: output_tb_flag, output_transmission_flag, output_emissivity_flag 
+  LOGICAL,          INTENT(IN) :: use_passed_emissivity
   ! The scan angle is based
   ! on the default Re (earth radius) and h (satellite height)
-  INTEGER, 		INTENT(IN) :: nChan, N_Profiles, N_Layers, N_trace
+  INTEGER,      INTENT(IN) :: nChan, N_Profiles, N_Layers, N_trace
   REAL(KIND=8), INTENT(IN) :: zenithAngle(n_profiles), scanAngle(n_profiles) 
   REAL(KIND=8), INTENT(IN) :: azimuthAngle(n_profiles), solarAngle(n_profiles,2)
-  INTEGER, 		INTENT(IN) :: year(n_profiles), month(n_profiles), day(n_profiles) 
+  INTEGER,      INTENT(IN) :: year(n_profiles), month(n_profiles), day(n_profiles) 
   REAL(KIND=8), INTENT(IN) :: pressureLevels(N_profiles, N_LAYERS+1)
   REAL(KIND=8), INTENT(IN) :: pressureLayers(N_profiles, N_LAYERS), temperatureLayers(N_Profiles,N_Layers)
   REAL(KIND=8), INTENT(IN) :: traceConcLayers(N_Profiles,N_layers,N_trace)
-  INTEGER, 		INTENT(IN) :: trace_IDs(N_trace)
-  INTEGER, 		INTENT(IN) :: climatology(N_profiles)
+  INTEGER,      INTENT(IN) :: trace_IDs(N_trace)
+  INTEGER,      INTENT(IN) :: climatology(N_profiles)
   REAL(KIND=8), INTENT(IN) :: surfaceTemperatures(N_Profiles,4), surfaceFractions(N_profiles, 4)
   REAL(KIND=8), INTENT(IN) :: LAI(N_Profiles), salinity(N_Profiles),  windSpeed10m(N_Profiles), windDirection10m(N_Profiles)
-  INTEGER, 		INTENT(IN) :: landType(N_Profiles), soilType(N_Profiles), vegType(N_Profiles), waterType(N_Profiles)
-  INTEGER, 		INTENT(IN) :: snowType(N_Profiles), iceType(N_Profiles) 
-  INTEGER, 		INTENT(IN) :: nthreads
+  INTEGER,      INTENT(IN) :: landType(N_Profiles), soilType(N_Profiles), vegType(N_Profiles), waterType(N_Profiles)
+  INTEGER,      INTENT(IN) :: snowType(N_Profiles), iceType(N_Profiles) 
+  INTEGER,      INTENT(IN) :: nthreads
   REAL(KIND=8), INTENT(OUT) :: outTb(N_Profiles,nChan) 
   CHARACTER(len=256), DIMENSION(1) :: sensor_id
   ! --------------------------
@@ -346,22 +346,22 @@ SUBROUTINE wrap_k_matrix( coefficientPath, sensor_id_in, IRwaterCoeff_File, MWwa
   ! on the default Re (earth radius) and h (satellite height)
   REAL(KIND=8), INTENT(IN) :: zenithAngle(N_profiles), scanAngle(N_profiles)
   REAL(KIND=8), INTENT(IN) :: azimuthAngle(N_profiles), solarAngle(N_profiles,2)
-  INTEGER, 		INTENT(IN) :: year(n_profiles), month(n_profiles), day(n_profiles)
+  INTEGER,      INTENT(IN) :: year(n_profiles), month(n_profiles), day(n_profiles)
   REAL(KIND=8), INTENT(IN) :: pressureLevels(N_profiles, N_Layers+1)
   REAL(KIND=8), INTENT(IN) :: pressureLayers(N_profiles, N_layers), temperatureLayers(N_profiles, N_layers)
   REAL(KIND=8), INTENT(IN) :: traceConcLayers(N_profiles, N_layers, N_trace)
-  INTEGER, 		INTENT(IN) :: trace_IDs(N_trace)
-  INTEGER, 		INTENT(IN) ::  climatology(N_profiles)
+  INTEGER,      INTENT(IN) :: trace_IDs(N_trace)
+  INTEGER,      INTENT(IN) ::  climatology(N_profiles)
   REAL(KIND=8), INTENT(IN) :: surfaceTemperatures(N_profiles,4), surfaceFractions(N_profiles,4), LAI(N_profiles) 
   REAL(KIND=8), INTENT(IN) :: salinity(N_profiles), windSpeed10m(N_profiles), windDirection10m(N_profiles)
-  INTEGER, 		INTENT(IN) :: landType(N_profiles), soilType(N_profiles), vegType(N_profiles), waterType(N_profiles) 
-  INTEGER, 		INTENT(IN) :: snowType(N_profiles), iceType(N_profiles) 
+  INTEGER,      INTENT(IN) :: landType(N_profiles), soilType(N_profiles), vegType(N_profiles), waterType(N_profiles) 
+  INTEGER,      INTENT(IN) :: snowType(N_profiles), iceType(N_profiles) 
   REAL(KIND=8), INTENT(OUT) :: outTb(N_profiles,nChan)
   REAL(KIND=8), INTENT(OUT) :: skinK(N_profiles,nChan,4), emisK(N_profiles,nChan), reflK(N_profiles,nChan)
   REAL(KIND=8), INTENT(OUT) :: windSpeedK(N_profiles,nChan), windDirectionK(N_profiles,nChan)
   REAL(KIND=8), INTENT(OUT) :: temperatureJacobian(N_profiles, nChan, N_LAYERS)
   REAL(KIND=8), INTENT(OUT) :: traceJacobian(N_profiles, nChan, N_LAYERS, N_trace)
-  INTEGER, 		INTENT(IN) :: nthreads
+  INTEGER,      INTENT(IN) :: nthreads
 
   CHARACTER(len=256) :: sensor_id(1)
   ! ============================================================================
@@ -674,30 +674,6 @@ END SUBROUTINE wrap_k_matrix
     allocate( outTransmission(N_Profiles, nChan, N_layers) ) 
   END IF
   end SUBROUTINE check_and_allocate_globals
-
-  SUBROUTINE applyAvg( Ref_LnPressure, User_LnPressure, Nref, Nuser, Xin, Xout ) 
-    USE ODPS_CoordinateMapping
-    INTEGER,         INTENT(IN) :: Nref, Nuser
-    REAL(KIND=8),   INTENT(IN)     :: Ref_LnPressure(Nref)
-    REAL(KIND=8),   INTENT(IN)     :: User_LnPressure(Nuser)
-    REAL(KIND=8),   INTENT(IN)     :: Xin(Nuser)
-    REAL(KIND=8),   INTENT(OUT)    :: Xout(Nref)
-    !locals   
-    INTEGER      :: k, interp_index(2,Nref)
-    REAL(KIND=8) :: Acc_Weighting(Nuser,Nref)
-
-    !CALL LayerAvg( Ref_LnPressure   , &
-    !               User_LnPressure  , &
-    !               Acc_Weighting    , &
-    !               interp_index)
-
-
-
-    DO k = 1, Nref
-       Xout(k) = SUM(Acc_Weighting(interp_index(1,k):interp_index(2,k), k)  &
-                           * Xin(interp_index(1,k):interp_index(2,k)) )
-    END DO
-  END SUBROUTINE applyAvg
 
   SUBROUTINE aerosols_and_clouds_on(N_aerosols_crtm, N_clouds_crtm, aerosolsOn, cloudsOn)
 

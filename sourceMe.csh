@@ -1,6 +1,4 @@
-module load other/comp/gcc-7.2
-source ~/bin/go3.csh 
-setenv FORT gfortran
-setenv FCFLAGS '-fimplicit-none -ffree-form -fopenmp -fno-second-underscore -fPIC -frecord-marker=4 -std=f2008'
-setenv ILOC /discover/nobackup/bkarpowi/rt/crtm_2.3.0/
-setenv F2PY_COMPILER gnu95
+#module load comp/intel/19.1.0.166
+module load comp/gcc/9.2.0
+module load python/GEOSpyD/Ana2019.10_py3.7
+

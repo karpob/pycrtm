@@ -17,7 +17,7 @@ all: ${MODULE}.so
 #Only really need first bit, if you change interface, but do it anyway so you don't forget.
 ${MODULE}.so: pycrtm.f90
 	f2py -m ${MODULE} -h sgnFile.pyf pycrtm.f90 --overwrite-signature
-	${F2PY} ${F2PY_FLAGS}-c -L${LIB} -lcrtm -lgomp -I${INC} -m ${MODULE} $<  only: wrap_forward wrap_k_matrix applyavg
+	${F2PY} ${F2PY_FLAGS}-c -L${LIB} -lcrtm -lgomp -I${INC} -m ${MODULE} $<  only: wrap_forward wrap_k_matrix
 
 clean:
 	${RM} ${MODULE}*.so
